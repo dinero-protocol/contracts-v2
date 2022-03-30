@@ -1,0 +1,6 @@
+artifacts
+cache
+contracts
+lib
+node_modules
+coverage

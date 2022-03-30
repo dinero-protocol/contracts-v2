@@ -102,3 +102,15 @@ dist
 
 # TernJS port file
 .tern-port
+
+coverage.json
+
+# hardhat
+cache/
+artifacts/
+
+# misc
+.DS_Store
+typechain-types
+data
+.vscode/settings.json
