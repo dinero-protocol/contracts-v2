@@ -1,4 +1,6 @@
-node_modules
 artifacts
 cache
+contracts
+lib
+node_modules
 coverage
