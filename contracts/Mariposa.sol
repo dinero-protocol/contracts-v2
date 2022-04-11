@@ -96,7 +96,7 @@ contract Mariposa is Auth{
         - triggers adjustments even if mintRate is zero for department
     */
     /// @dev adjustments occur here instead of in a seperate adjust() method
-    function distribute() external{
+    function distribute() public{
         uint currentEpoch = block.timestamp / epochSeconds;
         require (currentEpoch > lastEpoch, "Mariposa : distribution event already occurred this epoch");
         uint totalSupplyOutstanding = currentOutstanding() + ERC20(btrfly).totalSupply();
@@ -194,6 +194,10 @@ contract Mariposa is Auth{
     function request(uint amount) external{
         uint callerDepartment = getAddressDepartment[msg.sender];
         require(callerDepartment != 0, "Mariposa : msg.sender does not have permission to mint BTRFLY");
+
+        // calls distribute if department lacks budget, in hopes of filling budget
+        if (getDepartmentBalance[callerDepartment] < amount) distribute();
+        
         getDepartmentBalance[callerDepartment] -= amount;
         IBTRFLY(btrfly).mint(msg.sender,amount);
         emit DepartmentTransfer(callerDepartment, 0, amount);
