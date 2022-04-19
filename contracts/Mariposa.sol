@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.0;
+pragma solidity >=0.8.0;
 
 import "@rari-capital/solmate/src/tokens/ERC20.sol";
 import "@rari-capital/solmate/src/auth/Auth.sol";
@@ -194,10 +194,6 @@ contract Mariposa is Auth{
     function request(uint amount) external{
         uint callerDepartment = getAddressDepartment[msg.sender];
         require(callerDepartment != 0, "Mariposa : msg.sender does not have permission to mint BTRFLY");
-
-        // calls distribute if department lacks budget, in hopes of filling budget
-        if (getDepartmentBalance[callerDepartment] < amount) distribute();
-        
         getDepartmentBalance[callerDepartment] -= amount;
         IBTRFLY(btrfly).mint(msg.sender,amount);
         emit DepartmentTransfer(callerDepartment, 0, amount);

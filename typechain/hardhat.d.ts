@@ -13,15 +13,60 @@ import * as Contracts from ".";
 declare module "hardhat/types/runtime" {
   interface HardhatEthersHelpers extends HardhatEthersHelpersBase {
     getContractFactory(
+      name: "Auth",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.Auth__factory>;
+    getContractFactory(
+      name: "Authority",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.Authority__factory>;
+    getContractFactory(
+      name: "ERC20",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.ERC20__factory>;
+    getContractFactory(
       name: "Greeter",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.Greeter__factory>;
+    getContractFactory(
+      name: "IBTRFLY",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IBTRFLY__factory>;
+    getContractFactory(
+      name: "Mariposa",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.Mariposa__factory>;
 
+    getContractAt(
+      name: "Auth",
+      address: string,
+      signer?: ethers.Signer
+    ): Promise<Contracts.Auth>;
+    getContractAt(
+      name: "Authority",
+      address: string,
+      signer?: ethers.Signer
+    ): Promise<Contracts.Authority>;
+    getContractAt(
+      name: "ERC20",
+      address: string,
+      signer?: ethers.Signer
+    ): Promise<Contracts.ERC20>;
     getContractAt(
       name: "Greeter",
       address: string,
       signer?: ethers.Signer
     ): Promise<Contracts.Greeter>;
+    getContractAt(
+      name: "IBTRFLY",
+      address: string,
+      signer?: ethers.Signer
+    ): Promise<Contracts.IBTRFLY>;
+    getContractAt(
+      name: "Mariposa",
+      address: string,
+      signer?: ethers.Signer
+    ): Promise<Contracts.Mariposa>;
 
     // default types
     getContractFactory(
