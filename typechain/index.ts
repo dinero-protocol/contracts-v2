@@ -4,13 +4,11 @@
 export type { Auth } from "./Auth";
 export type { Authority } from "./Authority";
 export type { ERC20 } from "./ERC20";
-export type { Greeter } from "./Greeter";
 export type { IBTRFLY } from "./IBTRFLY";
 export type { Mariposa } from "./Mariposa";
 
 export { Auth__factory } from "./factories/Auth__factory";
 export { Authority__factory } from "./factories/Authority__factory";
 export { ERC20__factory } from "./factories/ERC20__factory";
-export { Greeter__factory } from "./factories/Greeter__factory";
 export { IBTRFLY__factory } from "./factories/IBTRFLY__factory";
 export { Mariposa__factory } from "./factories/Mariposa__factory";
