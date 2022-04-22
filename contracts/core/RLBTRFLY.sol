@@ -55,12 +55,12 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
 
     event Shutdown(uint256 timestamp);
     event Locked(
-        address indexed user,
+        address indexed account,
         uint256 indexed epoch,
         uint256 amount,
         bool relock
     );
-    event Withdrawn(address indexed user, uint256 amount, bool relocked);
+    event Withdrawn(address indexed account, uint256 amount, bool relock);
 
     constructor(
         address _owner,

@@ -2,7 +2,11 @@ import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-// import { callAndReturnEvents, validateEvent } from './helpers';
+import {
+  callAndReturnEvent,
+  callAndReturnEvents,
+  validateEvent,
+} from './helpers';
 import { BTRFLY, RLBTRFLY } from '../typechain';
 import { increaseBlockTimestamp, toBN } from './helpers';
 
@@ -70,14 +74,22 @@ describe('RLBTRFLY', function () {
       const btrflyBalanceBefore = await btrfly.balanceOf(account);
       const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(account);
 
-      await rlBtrfly.lock(account, lockAmount);
+      const lockEvent = await callAndReturnEvent(rlBtrfly.lock, [
+        account,
+        lockAmount,
+      ]);
 
       const { timestamp } = await ethers.provider.getBlock('latest');
-      const unlockedAt = toBN(timestamp)
-        .div(week)
-        .mul(week)
-        .add(week)
-        .add(lockDuration);
+      const epoch = toBN(timestamp).div(week).mul(week).add(week);
+
+      validateEvent(lockEvent, 'Locked(address,uint256,uint256,bool)', {
+        account,
+        epoch,
+        amount: lockAmount,
+        relock: false,
+      });
+
+      const unlockedAt = epoch.add(lockDuration);
       const btrflyBalanceAfter = await btrfly.balanceOf(account);
       const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(account);
 
@@ -108,8 +120,7 @@ describe('RLBTRFLY', function () {
       const btrflyBalanceBefore = await btrfly.balanceOf(account);
       const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(account);
       const { timestamp } = await ethers.provider.getBlock('latest');
-      const { unlockable, lockData } =
-        await rlBtrfly.lockedBalances(account);
+      const { unlockable, lockData } = await rlBtrfly.lockedBalances(account);
       const { amount, unlockTime } = lockData[0];
       const expectedUnlockable = unlockable.add(amount);
 
@@ -117,15 +128,29 @@ describe('RLBTRFLY', function () {
       await increaseBlockTimestamp(Number(toBN(unlockTime).sub(timestamp)));
 
       // Process without relock
-      await rlBtrfly.processExpiredLocks(false);
+      const events = await callAndReturnEvents(rlBtrfly.processExpiredLocks, [
+        false,
+      ]);
+      const withdrawEvent = events[0];
+
+      validateEvent(withdrawEvent, 'Withdrawn(address,uint256,bool)', {
+        account,
+        amount: expectedUnlockable,
+        relock: false,
+      });
 
       const btrflyBalanceAfter = await btrfly.balanceOf(account);
       const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(account);
-      const { unlockable: unlockableAfter } =
-        await rlBtrfly.lockedBalances(account);
+      const { unlockable: unlockableAfter } = await rlBtrfly.lockedBalances(
+        account
+      );
 
-      expect(btrflyBalanceAfter).to.equal(btrflyBalanceBefore.add(expectedUnlockable));
-      expect(lockedBalanceAfter).to.equal(lockedBalanceBefore.sub(expectedUnlockable));
+      expect(btrflyBalanceAfter).to.equal(
+        btrflyBalanceBefore.add(expectedUnlockable)
+      );
+      expect(lockedBalanceAfter).to.equal(
+        lockedBalanceBefore.sub(expectedUnlockable)
+      );
       expect(unlockableAfter).to.equal(0);
     });
   });
@@ -147,7 +172,9 @@ describe('RLBTRFLY', function () {
       const btrflyBalanceBefore = await btrfly.balanceOf(account);
 
       // Simulate the shutdown
-      await rlBtrfly.shutdown();
+      const shutdownEvent = await callAndReturnEvent(rlBtrfly.shutdown, []);
+
+      validateEvent(shutdownEvent, 'Shutdown(uint256)', {});
 
       // Attempt to lock, which should revert
       await expect(rlBtrfly.lock(account, toBN(1))).to.be.revertedWith(
@@ -159,19 +186,18 @@ describe('RLBTRFLY', function () {
 
       const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(account);
       const btrflyBalanceAfter = await btrfly.balanceOf(account);
-      const { locked, unlockable } =
-        await rlBtrfly.lockedBalances(account);
+      const { locked, unlockable } = await rlBtrfly.lockedBalances(account);
 
       expect(lockedBalanceAfter).to.equal(0);
-      expect(btrflyBalanceAfter).to.equal(btrflyBalanceBefore.add(lockedBalanceBefore));
+      expect(btrflyBalanceAfter).to.equal(
+        btrflyBalanceBefore.add(lockedBalanceBefore)
+      );
       expect(locked).to.equal(0);
       expect(unlockable).to.equal(0);
     });
 
     it('Should revert when called after shutdown', async function () {
-      await expect(rlBtrfly.shutdown()).to.be.revertedWith(
-        'IsShutdown()'
-      );
+      await expect(rlBtrfly.shutdown()).to.be.revertedWith('IsShutdown()');
     });
   });
 });
