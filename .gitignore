@@ -111,6 +111,7 @@ artifacts/
 
 # misc
 .DS_Store
+typechain
 typechain-types
 data
 .vscode/settings.json
