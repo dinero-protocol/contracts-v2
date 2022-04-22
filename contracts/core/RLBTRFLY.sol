@@ -494,6 +494,8 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
 
     // Withdraw expired locks to a different address
     function withdrawExpiredLocksTo(address _to) external nonReentrant {
+        if (_to == address(0)) revert ZeroAddress();
+
         _processExpiredLocks(msg.sender, false, _to);
     }
 

@@ -16,7 +16,6 @@ describe('RLBTRFLY', function () {
   let btrfly: BTRFLY;
   let rlBtrfly: RLBTRFLY;
 
-  // let addressZero: string;
   let lockDuration: BigNumber;
   let week: BigNumber;
 
@@ -106,6 +105,57 @@ describe('RLBTRFLY', function () {
       expect(lockData[0].amount).to.equal(lockAmount);
       expect(lockData[0].unlockTime).to.equal(unlockedAt.toNumber());
     });
+
+    it('Should store the lock on existing lock data within the same epoch', async function () {
+      const account = admin.address;
+      const lockAmount = toBN(1e9);
+      const btrflyBalanceBefore = await btrfly.balanceOf(account);
+      const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(account);
+      const expectedTotal = lockAmount.add(lockedBalanceBefore);
+      const { lockData: lockDataBefore } = await rlBtrfly.lockedBalances(
+        account
+      );
+      const lockIdx = lockDataBefore.length - 1;
+
+      const lockEvent = await callAndReturnEvent(rlBtrfly.lock, [
+        account,
+        lockAmount,
+      ]);
+
+      const { timestamp } = await ethers.provider.getBlock('latest');
+      const epoch = toBN(timestamp).div(week).mul(week).add(week);
+
+      validateEvent(lockEvent, 'Locked(address,uint256,uint256,bool)', {
+        account,
+        epoch,
+        amount: lockAmount,
+        relock: false,
+      });
+
+      const unlockedAt = epoch.add(lockDuration);
+      const btrflyBalanceAfter = await btrfly.balanceOf(account);
+      const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(account);
+
+      expect(btrflyBalanceAfter).to.equal(btrflyBalanceBefore.sub(lockAmount));
+      expect(lockedBalanceAfter).to.equal(lockedBalanceBefore.add(lockAmount));
+
+      const {
+        total,
+        unlockable,
+        locked,
+        lockData: lockDataAfter,
+      } = await rlBtrfly.lockedBalances(account);
+
+      expect(total).to.equal(expectedTotal);
+      expect(lockDataAfter[lockIdx].amount).to.equal(
+        lockDataBefore[lockIdx].amount.add(lockAmount)
+      );
+      expect(unlockable).to.equal(0);
+      expect(locked).to.equal(expectedTotal);
+      expect(lockDataAfter.length).to.equal(lockIdx + 1);
+      expect(lockDataAfter[lockIdx].amount).to.equal(expectedTotal);
+      expect(lockDataAfter[lockIdx].unlockTime).to.equal(unlockedAt.toNumber());
+    });
   });
 
   describe('processExpiredLocks', function () {
@@ -131,6 +181,58 @@ describe('RLBTRFLY', function () {
       const events = await callAndReturnEvents(rlBtrfly.processExpiredLocks, [
         false,
       ]);
+      const withdrawEvent = events[0];
+
+      validateEvent(withdrawEvent, 'Withdrawn(address,uint256,bool)', {
+        account,
+        amount: expectedUnlockable,
+        relock: false,
+      });
+
+      const btrflyBalanceAfter = await btrfly.balanceOf(account);
+      const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(account);
+      const { unlockable: unlockableAfter } = await rlBtrfly.lockedBalances(
+        account
+      );
+
+      expect(btrflyBalanceAfter).to.equal(
+        btrflyBalanceBefore.add(expectedUnlockable)
+      );
+      expect(lockedBalanceAfter).to.equal(
+        lockedBalanceBefore.sub(expectedUnlockable)
+      );
+      expect(unlockableAfter).to.equal(0);
+    });
+  });
+
+  describe('withdrawExpiredLocksTo', function () {
+    it('Should revert on non-expired locks', async function () {
+      await expect(
+        rlBtrfly.withdrawExpiredLocksTo(ethers.constants.AddressZero)
+      ).to.be.revertedWith('ZeroAddress()');
+    });
+
+    it('Should withdraw tokens from expired locks without relock', async function () {
+      // Create a new lock
+      const account = admin.address;
+      const lockAmount = toBN(1e9);
+      await rlBtrfly.lock(account, lockAmount);
+
+      const btrflyBalanceBefore = await btrfly.balanceOf(account);
+      const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(account);
+      const { timestamp } = await ethers.provider.getBlock('latest');
+      const { unlockable, lockData } = await rlBtrfly.lockedBalances(account);
+      const { amount, unlockTime } = lockData[0];
+      const expectedUnlockable = unlockable.add(amount);
+
+      // Simulate passing of time until the next lock expiry
+      await increaseBlockTimestamp(Number(toBN(unlockTime).sub(timestamp)));
+
+      // Process without relock
+      const events = await callAndReturnEvents(
+        rlBtrfly.withdrawExpiredLocksTo,
+        [account]
+      );
       const withdrawEvent = events[0];
 
       validateEvent(withdrawEvent, 'Withdrawn(address,uint256,bool)', {

@@ -30,5 +30,4 @@ before(async function () {
   this.multisig = multisig;
   this.btrfly = btrfly;
   this.rlBtrfly = rlBtrfly;
-  this.addressZero = ethers.constants.AddressZero;
 });
