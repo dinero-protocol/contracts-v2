@@ -115,6 +115,7 @@ describe('RLBTRFLY', function () {
       const { lockData: lockDataBefore } = await rlBtrfly.lockedBalances(
         account
       );
+      // Lock index should stay the same as the current latest one
       const lockIdx = lockDataBefore.length - 1;
 
       const lockEvent = await callAndReturnEvent(rlBtrfly.lock, [
@@ -154,6 +155,57 @@ describe('RLBTRFLY', function () {
       expect(locked).to.equal(expectedTotal);
       expect(lockDataAfter.length).to.equal(lockIdx + 1);
       expect(lockDataAfter[lockIdx].amount).to.equal(expectedTotal);
+      expect(lockDataAfter[lockIdx].unlockTime).to.equal(unlockedAt.toNumber());
+    });
+
+    it('Should store the lock on a new lock data for new epoch', async function () {
+      // Simulate passing of time until the next epoch
+      await increaseBlockTimestamp(Number(week));
+
+      const account = admin.address;
+      const lockAmount = toBN(1e9);
+      const btrflyBalanceBefore = await btrfly.balanceOf(account);
+      const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(account);
+      const expectedTotal = lockAmount.add(lockedBalanceBefore);
+      const { lockData: lockDataBefore } = await rlBtrfly.lockedBalances(
+        account
+      );
+      // Due to a new lock added, the new lock index should be equal to the current length of the array
+      const lockIdx = lockDataBefore.length;
+
+      const lockEvent = await callAndReturnEvent(rlBtrfly.lock, [
+        account,
+        lockAmount,
+      ]);
+
+      const { timestamp } = await ethers.provider.getBlock('latest');
+      const epoch = toBN(timestamp).div(week).mul(week).add(week);
+
+      validateEvent(lockEvent, 'Locked(address,uint256,uint256,bool)', {
+        account,
+        epoch,
+        amount: lockAmount,
+        relock: false,
+      });
+
+      const unlockedAt = epoch.add(lockDuration);
+      const btrflyBalanceAfter = await btrfly.balanceOf(account);
+      const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(account);
+
+      expect(btrflyBalanceAfter).to.equal(btrflyBalanceBefore.sub(lockAmount));
+      expect(lockedBalanceAfter).to.equal(lockedBalanceBefore.add(lockAmount));
+
+      const {
+        total,
+        locked,
+        lockData: lockDataAfter,
+      } = await rlBtrfly.lockedBalances(account);
+
+      expect(total).to.equal(expectedTotal);
+      expect(lockDataAfter[lockIdx].amount).to.equal(lockAmount);
+      expect(locked).to.equal(expectedTotal);
+      expect(lockDataAfter.length).to.equal(lockIdx + 1);
+      expect(lockDataAfter[lockIdx].amount).to.equal(lockAmount);
       expect(lockDataAfter[lockIdx].unlockTime).to.equal(unlockedAt.toNumber());
     });
   });
