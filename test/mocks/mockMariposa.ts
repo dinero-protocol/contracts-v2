@@ -6,17 +6,15 @@ import { ethers, network } from "hardhat";
  * Impersonates the multisig address
  * @returns impersonated ownerSigner
  */
- export async function impersonateSigner() {
-    const ownerAddr = "0xA52Fd396891E7A74b641a2Cb1A6999Fcf56B077e";
-    await network.provider.send('hardhat_impersonateAccount', [ownerAddr]);
+ export async function impersonateSigner(address: string) {
+    await network.provider.send('hardhat_impersonateAccount', [address]);
 
-    const ownerSigner: Signer = ethers.provider.getSigner(ownerAddr);
-    const owner_addr = await ownerSigner.getAddress();
+    const signer: Signer = ethers.provider.getSigner(address);
 
     let balance: string = "0x10000000000000000000000";
-    await network.provider.send("hardhat_setBalance", [owner_addr, balance, ]);
+    await network.provider.send("hardhat_setBalance", [address, balance, ]);
 
-    return ownerSigner;
+    return signer;
 }
 
 /**
