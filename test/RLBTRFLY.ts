@@ -57,6 +57,67 @@ describe('RLBTRFLY', function () {
     });
   });
 
+  describe('checkpointEpoch', function () {
+    it('Should perform epoch checkpoint', async function () {
+      const epochCountBefore = await rlBtrfly.epochCount();
+      const { date: dateBefore } = await rlBtrfly.epochs(
+        epochCountBefore.sub(1)
+      );
+
+      // Simulate passing of time until the next epoch
+      await increaseBlockTimestamp(Number(week));
+
+      // New epoch records will be added up to the next epoch (last + 2)
+      await rlBtrfly.checkpointEpoch();
+
+      const epochCountAfter = await rlBtrfly.epochCount();
+      const { date: dateAfter } = await rlBtrfly.epochs(epochCountAfter.sub(1));
+
+      expect(epochCountAfter).to.equal(epochCountBefore.add(2));
+      expect(dateAfter).to.equal(dateBefore + Number(week.mul(2)));
+    });
+  });
+
+  describe('findEpochId', function () {
+    it('Should return the epoch index based on a valid timestamp', async function () {
+      const { timestamp } = await ethers.provider.getBlock('latest');
+      const epoch = toBN(timestamp).div(week).mul(week);
+
+      const epochIdx = await rlBtrfly.findEpochId(timestamp);
+      const epochCount = await rlBtrfly.epochCount();
+      const { date } = await rlBtrfly.epochs(epochIdx);
+
+      expect(epochIdx).to.be.lte(epochCount.sub(1));
+      expect(date).to.equal(epoch);
+    });
+
+    it('Should return the last epoch index on future timestamp', async function () {
+      // Query with future timestamp 3 weeks from now
+      let { timestamp } = await ethers.provider.getBlock('latest');
+      timestamp = timestamp + Number(week) * 3;
+      const epoch = toBN(timestamp).div(week).mul(week);
+
+      const epochIdx = await rlBtrfly.findEpochId(timestamp);
+      const epochCount = await rlBtrfly.epochCount();
+      const { date } = await rlBtrfly.epochs(epochIdx);
+
+      expect(epochIdx).to.be.lte(epochCount.sub(1));
+      expect(date).to.lt(epoch);
+    });
+
+    it('Should return the first epoch index on past timestamp', async function () {
+      // Query with timestamp of 1 week before the first epoch
+      const { date: timestamp } = await rlBtrfly.epochs(0);
+      const epoch = toBN(timestamp).sub(week).div(week).mul(week);
+
+      const epochIdx = await rlBtrfly.findEpochId(timestamp);
+      const { date } = await rlBtrfly.epochs(epochIdx);
+
+      expect(epochIdx).to.equal(0);
+      expect(date).to.gt(epoch);
+    });
+  });
+
   describe('lock', function () {
     it('Should revert on invalid amount of BTRFLY', async function () {
       const account = admin.address;
@@ -95,12 +156,8 @@ describe('RLBTRFLY', function () {
       expect(btrflyBalanceAfter).to.equal(btrflyBalanceBefore.sub(lockAmount));
       expect(lockedBalanceAfter).to.equal(lockedBalanceBefore.add(lockAmount));
 
-      const {
-        total,
-        unlockable,
-        locked,
-        lockData,
-      } = await rlBtrfly.lockedBalances(account);
+      const { total, unlockable, locked, lockData } =
+        await rlBtrfly.lockedBalances(account);
 
       expect(total).to.equal(lockAmount);
       expect(unlockable).to.equal(0);
@@ -108,6 +165,9 @@ describe('RLBTRFLY', function () {
       expect(lockData.length).to.equal(1);
       expect(lockData[0].amount).to.equal(lockAmount);
       expect(lockData[0].unlockTime).to.equal(unlockedAt.toNumber());
+
+      const pendingLock = await rlBtrfly.pendingLockOf(account);
+      expect(pendingLock).to.equal(lockAmount);
     });
 
     it('Should store the lock on existing lock data within the same epoch', async function () {
@@ -160,6 +220,9 @@ describe('RLBTRFLY', function () {
       expect(lockDataAfter.length).to.equal(lockIdx + 1);
       expect(lockDataAfter[lockIdx].amount).to.equal(expectedTotal);
       expect(lockDataAfter[lockIdx].unlockTime).to.equal(unlockedAt.toNumber());
+
+      const pendingLock = await rlBtrfly.pendingLockOf(account);
+      expect(pendingLock).to.equal(expectedTotal);
     });
 
     it('Should store the lock on a new lock data for new epoch', async function () {
@@ -211,14 +274,15 @@ describe('RLBTRFLY', function () {
       expect(lockDataAfter.length).to.equal(lockIdx + 1);
       expect(lockDataAfter[lockIdx].amount).to.equal(lockAmount);
       expect(lockDataAfter[lockIdx].unlockTime).to.equal(unlockedAt.toNumber());
+
+      const pendingLock = await rlBtrfly.pendingLockOf(account);
+      expect(pendingLock).to.equal(lockAmount);
     });
 
     it('Should properly relock after creating a new lock', async function () {
       const account = admin.address;
-      const {
-        total: totalBefore,
-        lockData: lockDataBefore,
-      } = await rlBtrfly.lockedBalances(account);
+      const { total: totalBefore, lockData: lockDataBefore } =
+        await rlBtrfly.lockedBalances(account);
       const { amount: relockAmount, unlockTime } = lockDataBefore[0];
       const btrflyBalanceBefore = await btrfly.balanceOf(account);
       const { timestamp } = await ethers.provider.getBlock('latest');
@@ -256,10 +320,8 @@ describe('RLBTRFLY', function () {
       // Assert the order of the locks
       // The last lock should be the newly created lock before the relock
       // while the second last lock should be the relock
-      const {
-        total: totalAfter,
-        lockData: lockDataAfter,
-      } = await rlBtrfly.lockedBalances(account);
+      const { total: totalAfter, lockData: lockDataAfter } =
+        await rlBtrfly.lockedBalances(account);
       const btrflyBalanceAfter = await btrfly.balanceOf(account);
       const lastLock = lockDataAfter[lockDataAfter.length - 1];
       const secondLastLock = lockDataAfter[lockDataAfter.length - 2];
@@ -272,6 +334,135 @@ describe('RLBTRFLY', function () {
       expect(secondLastLock.unlockTime).to.equal(expectedUnlockForRelock);
       expect(btrflyBalanceAfter).to.equal(btrflyBalanceBefore.sub(lockAmount));
       expect(totalAfter).to.equal(totalBefore.add(lockAmount));
+
+      const pendingLock = await rlBtrfly.pendingLockOf(account);
+      expect(pendingLock).to.equal(lockAmount);
+    });
+  });
+
+  describe('lockedBalances', function () {
+    it('Should return correct balance data an account', async function () {
+      const account = admin.address;
+      const { total, locked, unlockable, lockData } = await rlBtrfly.lockedBalances(account);
+      const { timestamp } = await ethers.provider.getBlock('latest');
+      const epoch = toBN(timestamp).div(week).mul(week);
+      
+      let tmpTotal = toBN(0);
+      let tmpLocked = toBN(0);
+      lockData.forEach((row) => {
+        const { amount, unlockTime } = row;
+
+        tmpTotal = tmpTotal.add(amount);
+
+        if (toBN(unlockTime).gt(epoch)) {
+          tmpLocked = tmpLocked.add(amount);
+        }
+      });
+
+      expect(total).to.equal(tmpTotal);
+      expect(locked).to.equal(tmpLocked);
+      expect(unlockable).to.equal(tmpTotal.sub(tmpLocked));
+    });
+  });
+
+  describe('lockedBalanceOf', function () {
+    it('Should return correct balance of locked tokens of an account including those with expired locks', async function () {
+      const account = admin.address;
+      const { total, locked, unlockable } = await rlBtrfly.lockedBalances(account);
+      const lockedBalance = await rlBtrfly.lockedBalanceOf(account);
+
+      expect(lockedBalance).to.equal(total);
+      expect(lockedBalance).to.equal(locked.add(unlockable));
+    });
+  });
+
+  describe('balanceOf', function () {
+    it('Should return correct balance of currently locked tokens within current epoch', async function () {
+      const account = admin.address;
+      const pendingLock = await rlBtrfly.pendingLockOf(account);
+      const lockedBalance = await rlBtrfly.lockedBalanceOf(account);
+      const balance = await rlBtrfly.balanceOf(account);
+
+      expect(balance).to.equal(lockedBalance.sub(pendingLock));
+    });
+  });
+
+  describe('balanceAtEpochOf', function () {
+    it('Should return 0 on invalid epoch index', async function () {
+      const epochCount = await rlBtrfly.epochCount();
+      const balance = await rlBtrfly.balanceAtEpochOf(epochCount, admin.address);
+
+      expect(balance).to.equal(0);
+    });
+
+    it('Should return correct balance of currently locked tokens up to the specified epoch', async function () {
+      const account = admin.address;
+      const epochCount = await rlBtrfly.epochCount();
+      const epoch = await rlBtrfly.epochs(epochCount.sub(1));
+      const { lockData } = await rlBtrfly.lockedBalances(account);
+      const epochDate = toBN(epoch.date);
+      const lockedBalance = await rlBtrfly.lockedBalanceOf(account);
+
+      // Remove both to-be expired locks and future locks
+      let exclude = toBN(0);
+      lockData.forEach((row) => {
+        const { amount, unlockTime } = row;
+        const lockedAt = toBN(unlockTime).sub(lockDuration);
+
+        if (lockedAt.lte(epochDate.sub(lockDuration)) || lockedAt.gt(epochDate)) {
+          exclude = exclude.add(amount);
+        }
+      });
+
+      const balance = await rlBtrfly.balanceAtEpochOf(epochCount.sub(1), account);
+
+      expect(balance).to.equal(lockedBalance.sub(exclude));
+    });
+  });
+
+  describe('totalSupply', function () {
+    it('Should return correct current total of locked tokens within current epoch', async function () {
+      // Since we only have 1 user with locked token, it should match with the user's balance
+      const account = admin.address;
+      const pendingLock = await rlBtrfly.pendingLockOf(account);
+      const lockedBalance = await rlBtrfly.lockedBalanceOf(account);
+      const totalSupply = await rlBtrfly.totalSupply();
+
+      expect(totalSupply).to.equal(lockedBalance.sub(pendingLock));
+    });
+  });
+
+  describe('totalSupplyAtEpoch', function () {
+    it('Should return 0 on invalid epoch index', async function () {
+      const epochCount = await rlBtrfly.epochCount();
+      const totalSupply = await rlBtrfly.totalSupplyAtEpoch(epochCount);
+
+      expect(totalSupply).to.equal(0);
+    });
+
+    it('Should return correct balance of currently locked tokens up to the specified epoch', async function () {
+      // Since we only have 1 user with locked token, it would suffice to calculate and compare with the sole user's lock data
+      const account = admin.address;
+      const epochCount = await rlBtrfly.epochCount();
+      const epoch = await rlBtrfly.epochs(epochCount.sub(1));
+      const { lockData } = await rlBtrfly.lockedBalances(account);
+      const epochDate = toBN(epoch.date);
+      const lockedBalance = await rlBtrfly.lockedBalanceOf(account);
+
+      // Remove both to-be expired locks and future locks
+      let exclude = toBN(0);
+      lockData.forEach((row) => {
+        const { amount, unlockTime } = row;
+        const lockedAt = toBN(unlockTime).sub(lockDuration);
+
+        if (lockedAt.lte(epochDate.sub(lockDuration)) || lockedAt.gt(epochDate)) {
+          exclude = exclude.add(amount);
+        }
+      });
+
+      const totalSupply = await rlBtrfly.totalSupplyAtEpoch(epochCount.sub(1));
+
+      expect(totalSupply).to.equal(lockedBalance.sub(exclude));
     });
   });
 
@@ -298,11 +489,15 @@ describe('RLBTRFLY', function () {
       // Simulate passing of time until the next lock expiry
       await increaseBlockTimestamp(Number(toBN(unlockTime).sub(timestamp)));
 
-      const { unlockable: unlockableMid } = await rlBtrfly.lockedBalances(
+      // Assert the unlocked amount and active locked token balance
+      const { locked, unlockable: unlockableMid } = await rlBtrfly.lockedBalances(
         account
       );
+      const activeBalance = await rlBtrfly.balanceOf(account);
+      const pendingLock = await rlBtrfly.pendingLockOf(account);
 
       expect(unlockableMid).to.equal(amount);
+      expect(activeBalance).to.equal(locked.add(pendingLock));
 
       // Process without relock
       const events = await callAndReturnEvents(rlBtrfly.processExpiredLocks, [
@@ -384,15 +579,16 @@ describe('RLBTRFLY', function () {
 
       const btrflyBalanceAfter = await btrfly.balanceOf(account);
       const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(account);
-      const {
-        locked: lockedAfter,
-        unlockable: unlockableAfter,
-      } = await rlBtrfly.lockedBalances(account);
+      const { locked: lockedAfter, unlockable: unlockableAfter } =
+        await rlBtrfly.lockedBalances(account);
 
       expect(btrflyBalanceAfter).to.equal(btrflyBalanceBefore);
       expect(lockedBalanceAfter).to.equal(lockedBalanceBefore);
       expect(unlockableAfter).to.equal(0);
       expect(lockedAfter).to.equal(expectedLocked);
+
+      const pendingLock = await rlBtrfly.pendingLockOf(account);
+      expect(pendingLock).to.equal(0);
     });
   });
 
@@ -451,6 +647,9 @@ describe('RLBTRFLY', function () {
         lockedBalanceBefore.sub(expectedUnlockable)
       );
       expect(unlockableAfter).to.equal(0);
+
+      const pendingLock = await rlBtrfly.pendingLockOf(account);
+      expect(pendingLock).to.equal(0);
     });
   });
 

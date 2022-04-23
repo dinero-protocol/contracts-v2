@@ -52,6 +52,7 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
     error ZeroAddress();
     error ZeroAmount();
     error IsShutdown();
+    error InvalidIndex();
 
     event Shutdown(uint256 timestamp);
     event Locked(
@@ -126,15 +127,18 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
     }
 
     // Balance of the specified account by only including properly locked tokens at the given epoch
-    function balanceAtEpochOf(uint256 _epoch, address _user)
+    function balanceAtEpochOf(uint256 _epochIndex, address _user)
         external
         view
         returns (uint256 amount)
     {
+        if (_epochIndex >= epochs.length) return 0;
+
         LockedBalance[] storage locks = userLocks[_user];
 
-        uint256 epochTime = epochs[_epoch].date;
+        uint256 epochTime = epochs[_epochIndex].date;
         uint256 cutoffEpoch = epochTime - LOCK_DURATION;
+        uint256 currentEpoch = (block.timestamp / WEEK) * WEEK;
 
         if (locks.length != 0) {
             for (uint256 i = locks.length - 1; ; ) {
@@ -183,38 +187,6 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
         return 0;
     }
 
-    // Pending locked amount at the specified epoch and account
-    function pendingLockAtEpochOf(uint256 _epoch, address _user)
-        external
-        view
-        returns (uint256 amount)
-    {
-        LockedBalance[] storage locks = userLocks[_user];
-
-        uint256 nextEpoch = uint256(epochs[_epoch].date) + WEEK;
-
-        if (locks.length != 0) {
-            for (uint256 i = locks.length - 1; ; ) {
-                uint256 lockEpoch = uint256(locks[i].unlockTime) -
-                    LOCK_DURATION;
-
-                if (lockEpoch == nextEpoch) {
-                    return locks[i].amount;
-                } else if (lockEpoch < nextEpoch) {
-                    break;
-                }
-
-                if (i == 0) {
-                    break;
-                } else {
-                    --i;
-                }
-            }
-        }
-
-        return 0;
-    }
-
     // Total supply of all properly locked balances at the most recent and eligible epoch
     function totalSupply() external view returns (uint256 supply) {
         uint256 currentEpoch = (block.timestamp / WEEK) * WEEK;
@@ -247,15 +219,17 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
     }
 
     // Total supply of all properly locked balances at the given epoch
-    function totalSupplyAtEpoch(uint256 _epoch)
+    function totalSupplyAtEpoch(uint256 _epochIndex)
         external
         view
         returns (uint256 supply)
     {
-        uint256 epochStart = (uint256(epochs[_epoch].date) / WEEK) * WEEK;
+        if (_epochIndex >= epochs.length) return 0;
+
+        uint256 epochStart = (uint256(epochs[_epochIndex].date) / WEEK) * WEEK;
         uint256 cutoffEpoch = epochStart - LOCK_DURATION;
 
-        for (uint256 i = _epoch; ; ) {
+        for (uint256 i = _epochIndex; ; ) {
             Epoch memory e = epochs[i];
 
             if (uint256(e.date) <= cutoffEpoch) {
@@ -263,6 +237,12 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
             }
 
             supply += e.supply;
+
+            if (i == 0) {
+                break;
+            } else {
+                --i;
+            }
         }
 
         return supply;
@@ -276,9 +256,7 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
         _time = (_time / WEEK) * WEEK;
 
         // Perform binary-search for efficient epoch matching
-        for (uint256 i; i < 128; ++i) {
-            if (min >= max) break;
-
+        while (min < max) {
             uint256 mid = (min + max + 1) / 2;
             uint256 midEpochBlock = epochs[mid].date;
 
