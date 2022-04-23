@@ -7,7 +7,7 @@ import {SafeTransferLib} from "@rari-capital/solmate/src/utils/SafeTransferLib.s
 import {Auth, Authority} from "@rari-capital/solmate/src/auth/Auth.sol";
 
 /// @title RLBTRFLY
-/// @author Seiji
+/// @author Drahrealm
 
 /**
     @notice 
