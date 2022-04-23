@@ -132,8 +132,9 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
         view
         returns (uint256 amount)
     {
+        // Using storage as it's actually cheaper than allocating a new memory based variable
         LockedBalance[] storage locks = userLocks[_account];
-        Balance memory userBalance = balances[_account];
+        Balance storage userBalance = balances[_account];
         uint256 nextUnlockIndex = userBalance.nextUnlockIndex;
 
         amount = balances[_account].locked;
@@ -179,7 +180,6 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
 
         uint256 epochTime = epochs[_epochIndex].date;
         uint256 cutoffEpoch = epochTime - LOCK_DURATION;
-        uint256 currentEpoch = (block.timestamp / WEEK) * WEEK;
 
         if (locks.length != 0) {
             for (uint256 i = locks.length - 1; ; ) {
@@ -247,7 +247,7 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
 
         if (epochIndex != 0) {
             for (uint256 i = epochIndex - 1; ; ) {
-                Epoch memory e = epochs[i];
+                Epoch storage e = epochs[i];
 
                 if (uint256(e.date) <= cutoffEpoch) {
                     break;
@@ -282,7 +282,7 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
         uint256 cutoffEpoch = epochStart - LOCK_DURATION;
 
         for (uint256 i = _epochIndex; ; ) {
-            Epoch memory e = epochs[i];
+            Epoch storage e = epochs[i];
 
             if (uint256(e.date) <= cutoffEpoch) {
                 break;
@@ -347,7 +347,7 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
         )
     {
         LockedBalance[] storage locks = userLocks[_account];
-        Balance memory userBalance = balances[_account];
+        Balance storage userBalance = balances[_account];
         uint256 nextUnlockIndex = userBalance.nextUnlockIndex;
         uint256 idx;
 
@@ -443,11 +443,12 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
         }
 
         uint256 unlockTime = lockEpoch + LOCK_DURATION;
-        uint256 idx = userLocks[_account].length;
+        LockedBalance[] storage locks = userLocks[_account];
+        uint256 idx = locks.length;
 
         // If the latest user lock is smaller than this lock, add a new entry to the end of the list
-        if (idx == 0 || userLocks[_account][idx - 1].unlockTime < unlockTime) {
-            userLocks[_account].push(
+        if (idx == 0 || locks[idx - 1].unlockTime < unlockTime) {
+            locks.push(
                 LockedBalance({
                     amount: lockAmount,
                     unlockTime: uint32(unlockTime)
@@ -456,14 +457,14 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
         } else {
             // If the latest lock is further in the future, decrease the index
             // Can only happen if relocking an expired lock after creating a new lock
-            if (userLocks[_account][idx - 1].unlockTime > unlockTime) {
+            if (locks[idx - 1].unlockTime > unlockTime) {
                 --idx;
             }
 
             // If idx points to the epoch when same unlock time, update the lock amount
             // This is always true with a normal lock but maybe not with relock
-            if (userLocks[_account][idx - 1].unlockTime == unlockTime) {
-                LockedBalance storage locked = userLocks[_account][idx - 1];
+            if (locks[idx - 1].unlockTime == unlockTime) {
+                LockedBalance storage locked = locks[idx - 1];
                 locked.amount += lockAmount;
             } else {
                 // Handle the case when there's a relock performed after a lock
@@ -473,11 +474,11 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
                 // by copying and inserting the tail entry(next) and then overwrite the length-2 entry
 
                 // Reset idx
-                idx = userLocks[_account].length;
+                idx = locks.length;
 
                 // Get the current last item and copy it to the end of the list
-                LockedBalance storage locked = userLocks[_account][idx - 1];
-                userLocks[_account].push(
+                LockedBalance storage locked = locks[idx - 1];
+                locks.push(
                     LockedBalance({
                         amount: locked.amount,
                         unlockTime: locked.unlockTime
@@ -498,8 +499,7 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
         }
 
         // Update epoch supply
-        Epoch storage e = epochs[epochIndex];
-        e.supply += lockAmount;
+        epochs[epochIndex].supply += lockAmount;
 
         emit Locked(_account, lockEpoch, _amount, _isRelock);
     }
@@ -515,6 +515,7 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
         bool _relock,
         address _withdrawTo
     ) internal {
+        // Using storage as it's actually cheaper than allocating a new memory based variable
         LockedBalance[] storage locks = userLocks[_account];
         Balance storage userBalance = balances[_account];
         uint224 locked;
