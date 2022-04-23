@@ -343,10 +343,11 @@ describe('RLBTRFLY', function () {
   describe('lockedBalances', function () {
     it('Should return correct balance data an account', async function () {
       const account = admin.address;
-      const { total, locked, unlockable, lockData } = await rlBtrfly.lockedBalances(account);
+      const { total, locked, unlockable, lockData } =
+        await rlBtrfly.lockedBalances(account);
       const { timestamp } = await ethers.provider.getBlock('latest');
       const epoch = toBN(timestamp).div(week).mul(week);
-      
+
       let tmpTotal = toBN(0);
       let tmpLocked = toBN(0);
       lockData.forEach((row) => {
@@ -368,7 +369,9 @@ describe('RLBTRFLY', function () {
   describe('lockedBalanceOf', function () {
     it('Should return correct balance of locked tokens of an account including those with expired locks', async function () {
       const account = admin.address;
-      const { total, locked, unlockable } = await rlBtrfly.lockedBalances(account);
+      const { total, locked, unlockable } = await rlBtrfly.lockedBalances(
+        account
+      );
       const lockedBalance = await rlBtrfly.lockedBalanceOf(account);
 
       expect(lockedBalance).to.equal(total);
@@ -390,7 +393,10 @@ describe('RLBTRFLY', function () {
   describe('balanceAtEpochOf', function () {
     it('Should return 0 on invalid epoch index', async function () {
       const epochCount = await rlBtrfly.epochCount();
-      const balance = await rlBtrfly.balanceAtEpochOf(epochCount, admin.address);
+      const balance = await rlBtrfly.balanceAtEpochOf(
+        epochCount,
+        admin.address
+      );
 
       expect(balance).to.equal(0);
     });
@@ -409,12 +415,18 @@ describe('RLBTRFLY', function () {
         const { amount, unlockTime } = row;
         const lockedAt = toBN(unlockTime).sub(lockDuration);
 
-        if (lockedAt.lte(epochDate.sub(lockDuration)) || lockedAt.gt(epochDate)) {
+        if (
+          lockedAt.lte(epochDate.sub(lockDuration)) ||
+          lockedAt.gt(epochDate)
+        ) {
           exclude = exclude.add(amount);
         }
       });
 
-      const balance = await rlBtrfly.balanceAtEpochOf(epochCount.sub(1), account);
+      const balance = await rlBtrfly.balanceAtEpochOf(
+        epochCount.sub(1),
+        account
+      );
 
       expect(balance).to.equal(lockedBalance.sub(exclude));
     });
@@ -455,7 +467,10 @@ describe('RLBTRFLY', function () {
         const { amount, unlockTime } = row;
         const lockedAt = toBN(unlockTime).sub(lockDuration);
 
-        if (lockedAt.lte(epochDate.sub(lockDuration)) || lockedAt.gt(epochDate)) {
+        if (
+          lockedAt.lte(epochDate.sub(lockDuration)) ||
+          lockedAt.gt(epochDate)
+        ) {
           exclude = exclude.add(amount);
         }
       });
@@ -490,9 +505,8 @@ describe('RLBTRFLY', function () {
       await increaseBlockTimestamp(Number(toBN(unlockTime).sub(timestamp)));
 
       // Assert the unlocked amount and active locked token balance
-      const { locked, unlockable: unlockableMid } = await rlBtrfly.lockedBalances(
-        account
-      );
+      const { locked, unlockable: unlockableMid } =
+        await rlBtrfly.lockedBalances(account);
       const activeBalance = await rlBtrfly.balanceOf(account);
       const pendingLock = await rlBtrfly.pendingLockOf(account);
 

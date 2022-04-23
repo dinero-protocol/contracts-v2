@@ -127,7 +127,11 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
         @param  _account  address  Account
         @return amount    uint256  Amount
      */
-    function balanceOf(address _account) external view returns (uint256 amount) {
+    function balanceOf(address _account)
+        external
+        view
+        returns (uint256 amount)
+    {
         LockedBalance[] storage locks = userLocks[_account];
         Balance memory userBalance = balances[_account];
         uint256 nextUnlockIndex = userBalance.nextUnlockIndex;
