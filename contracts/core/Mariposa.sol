@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
-import "@rari-capital/solmate/src/tokens/ERC20.sol";
-import "@rari-capital/solmate/src/auth/Auth.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-/// @title MARIPOSA
-/// @author RealKinando (MarcelFromDaCartel)
+/// @title MARIPOSA                                                         
+/// @author RealKinando (MarcelFromDaCartel), BabyYodaBaby
 
 interface IBTRFLY{
     function mint(address account_, uint256 amount_) external;
@@ -41,7 +41,7 @@ interface IBTRFLY{
 
  */
 
-contract Mariposa is Auth{
+contract Mariposa is Ownable{
 
     event DepartmentTransfer(uint indexed from, uint indexed to, uint indexed amount);
 
@@ -70,25 +70,21 @@ contract Mariposa is Auth{
     mapping(uint => Department) public getDepartment;
     mapping(uint => uint) public getDepartmentBalance;
 
-    /// @param owner_ : address that owns Mariposa (DAOsig)
-    /// @param authority_ : address that determines which addresses can access requiresAuth functions
     /// @param btrfly_ : address of the btrfly token
     /// @param cap_ : (in wei units) cap for btrfly token
     /// @param epochSeconds_ : duration of an epoch, in seconds
     constructor(
-        address owner_,
-        address authority_,
         address btrfly_,
         uint cap_,
         uint epochSeconds_
     )
-    Auth(owner_,Authority(authority_)){
+    {
         btrfly = btrfly_;
-        require( cap_ > ERC20(btrfly).totalSupply(), "Mariposa : cap is lower than existing supply");
+        require( cap_ > IERC20(btrfly).totalSupply(), "Mariposa : cap lower than existing supply");
         cap = cap_;
         epochSeconds = epochSeconds_;
     }
-    
+
     /**
         @notice fork of Olympus V1 Staking Distributor Fork method, with some differences :
         - increases budgets instead of minting tokens directly
@@ -99,7 +95,7 @@ contract Mariposa is Auth{
     function distribute() public{
         uint currentEpoch = block.timestamp / epochSeconds;
         require (currentEpoch > lastEpoch, "Mariposa : distribution event already occurred this epoch");
-        uint totalSupplyOutstanding = currentOutstanding() + ERC20(btrfly).totalSupply();
+        uint totalSupplyOutstanding = currentOutstanding() + IERC20(btrfly).totalSupply();
         for (uint i = 0; i < currentEpoch - lastEpoch; i++){
             for (uint j = 1; j < departmentCount + 1 ; j++){
                 if (getDepartment[j].mintRate > 0){
@@ -151,7 +147,7 @@ contract Mariposa is Auth{
             uint mintRate_,
             uint adjustmentRate_,
             uint adjustmentTarget_
-        ) external requiresAuth{
+        ) external onlyOwner {
             departmentCount++;
 
             getDepartment[departmentCount] = Department(
@@ -173,7 +169,7 @@ contract Mariposa is Auth{
             uint departmentId, 
             uint adjustmentRate_, 
             uint adjustmentTarget_
-        ) external requiresAuth{
+        ) external onlyOwner {
             Department storage department = getDepartment[departmentId];
             department.addAdjustment = addAdjustment_;
             department.adjustmentRate = adjustmentRate_;
@@ -183,7 +179,7 @@ contract Mariposa is Auth{
 
     /// @param departmentId_ : id of the department to add the address to
     /// @param recipient_ : address that will added to the department
-    function setAddressDepartment(uint departmentId_, address recipient_) external requiresAuth{
+    function setAddressDepartment(uint departmentId_, address recipient_) external onlyOwner {
         require(departmentId_ <= departmentCount, "Mariposa : Department doesn't exist");
         getAddressDepartment[recipient_] = departmentId_;
         emit AddressDepartmentSet(departmentId_,recipient_);
