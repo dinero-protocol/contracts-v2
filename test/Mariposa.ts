@@ -67,6 +67,6 @@ export function MariposaTest(): void {
 
 }
 
-MariposaTest();
+MariposaTest()
 
 
