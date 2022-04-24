@@ -8,6 +8,7 @@
     - call setVault(mariposaAddress) on the btrfly contract
 
     tests to ensure
+    - check that we can't set a department address for a department that doesn't exist
     - distributions are correct
     - adjustments are correct
     - requests update department budgets correctly
@@ -17,24 +18,31 @@
 
 import { ethers, network } from "hardhat";
 import { Contract, Signer } from "ethers";
-import { mintBTRFLY, vaultIsMariposa } from "./its";
+import { addDepartments, callsDistribute, mintBTRFLY, setDepartmentAddress, setDepartmentAdjustment, setExtraDepartment, vaultIsMariposa } from "./its";
 import { impersonateSigner, setupMariposa, setupBTRFLY } from "./mocks/mockMariposa";
 
 export function MariposaTest(): void {
 
     let Mariposa: Contract; 
     let BTRFLY: Contract;
-    
+
     let multisigSigner: Signer;
     let mariposaSigner: Signer; 
+    let department1Signer: Signer;
+    let department2Signer: Signer;
+    let walletSigner: Signer; 
+    let signers: Signer[];
 
     let mariposa_addr: string; 
+    let department1_addr: string;
+    let department2_addr: string;
+    let wallet_addr: string;
     let multisig_addr = "0xA52Fd396891E7A74b641a2Cb1A6999Fcf56B077e";
 
     const btrfly = "0xC0d4Ceb216B3BA9C3701B291766fDCbA977ceC3A";
     const cap = "5000000000000000000000000";                              // in wei 
     const duration_of_epoch = 3600 * 8;                                   // 8 hours 
-    const txnAmt = "7000000000000000000000";
+    const txnAmt = "7000000000000000000";
 
     describe( "Tests for Mariposa", async() => {
 
@@ -42,6 +50,16 @@ export function MariposaTest(): void {
             
             // Impersonate multisig signer 
             multisigSigner = await impersonateSigner(multisig_addr);
+
+            // Get department signers and addresses
+            signers = await ethers.getSigners();
+            department1Signer = signers[0];
+            department2Signer = signers[1];
+            walletSigner = signers[2];
+
+            department1_addr = await department1Signer.getAddress();
+            department2_addr =  await department2Signer.getAddress(); 
+            wallet_addr = await walletSigner.getAddress();
 
             /** Connect to existing BTRFLY Contract **/
             BTRFLY = await setupBTRFLY(
@@ -71,8 +89,29 @@ export function MariposaTest(): void {
         })
 
         it("Should ensure that only Mariposa has the ability to mint BTRFLY tokens", async function() {
-            await mintBTRFLY(BTRFLY, multisigSigner, mariposaSigner, mariposa_addr, txnAmt);
+            await mintBTRFLY(BTRFLY, multisigSigner, mariposaSigner, wallet_addr, txnAmt);
         })
+
+        it("Adds departments that report to Mariposa for minting tokens", async function() {
+            await addDepartments(Mariposa, multisigSigner, department1_addr, department2_addr);
+        })
+
+        it("Sets the address of a department", async function () {
+            await setDepartmentAddress(Mariposa, multisigSigner, department1_addr, department2_addr);
+        })
+
+        it("Checks that we cannot set a department address for a department that doesn't exist", async function () {
+            await setExtraDepartment(Mariposa, multisigSigner, department1_addr);
+        })
+
+        it("Should update the adjustment rate and adjustment target of each department accordingly", async function () {
+            await setDepartmentAdjustment(Mariposa, multisigSigner);
+        })
+
+        it("Should ensure distributions are correct", async function () {
+            await callsDistribute(Mariposa);
+        })
+
 
     });
 

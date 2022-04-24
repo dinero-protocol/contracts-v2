@@ -18,8 +18,8 @@ import { ethers, network } from "hardhat";
 }
 
 /**
- * 
- * @param owner_addr Setup and deploy Mariposa contract
+ * Setup and deploy Mariposa contract
+ * @param owner_addr 
  * @param btrfly_addr 
  * @param cap_of_tokens 
  * @param duration_of_epoch 
@@ -57,3 +57,4 @@ export async function setupBTRFLY(btrfly_addr: string, signer: Signer){
     const BTRFLYContract = await ethers.getContractAt("BTRFLY", btrfly_addr, signer);
     return BTRFLYContract; 
 }
+
