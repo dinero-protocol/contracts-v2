@@ -15,12 +15,9 @@ before(async function () {
 
   multisig = await impersonateAddressAndReturnSigner(admin, multisigAddress);
   const btrfly = await ethers.getContractAt('BTRFLY', btrflyAddress);
-  const mockAuth = await (
-    await ethers.getContractFactory('MockAuthority')
-  ).deploy(admin.address);
   const rlBtrfly = await (
     await ethers.getContractFactory('RLBTRFLY')
-  ).deploy(admin.address, mockAuth.address, btrfly.address);
+  ).deploy(admin.address, btrfly.address);
 
   // Fund the admin address with some BTRFLY for testing purposes
   await btrfly.connect(multisig).transfer(admin.address, adminBtrflyBalance);

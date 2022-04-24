@@ -670,7 +670,7 @@ describe('RLBTRFLY', function () {
   describe('shutdown', function () {
     it('Should revert when called by unauthorized caller', async function () {
       await expect(rlBtrfly.connect(notAdmin).shutdown()).to.be.revertedWith(
-        'UNAUTHORIZED'
+        'Ownable: caller is not the owner'
       );
     });
 

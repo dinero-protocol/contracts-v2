@@ -4,7 +4,7 @@ pragma solidity 0.8.12;
 import {ReentrancyGuard} from "@rari-capital/solmate/src/utils/ReentrancyGuard.sol";
 import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
-import {Auth, Authority} from "@rari-capital/solmate/src/auth/Auth.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title RLBTRFLY
 /// @author Drahrealm
@@ -14,7 +14,7 @@ import {Auth, Authority} from "@rari-capital/solmate/src/auth/Auth.sol";
     Partially adapted from Convex's CvxLockerV2 contract with some modifications and optimizations for the BTRFLY V2 requirements
 */
 
-contract RLBTRFLY is ReentrancyGuard, Auth {
+contract RLBTRFLY is ReentrancyGuard, Ownable {
     using SafeTransferLib for ERC20;
 
     /**
@@ -82,14 +82,12 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
 
     /**
         @param  _owner      address  Owner address    
-        @param  _authority  address  Authority address
         @param  _btrfly     address  BTRFLY token address
      */
     constructor(
         address _owner,
-        address _authority,
         address _btrfly
-    ) Auth(_owner, Authority(_authority)) {
+    ) {
         if (_btrfly == address(0)) revert ZeroAddress();
         btrfly = ERC20(_btrfly);
 
@@ -101,7 +99,7 @@ contract RLBTRFLY is ReentrancyGuard, Auth {
     /** 
         @notice Emergency method to shutdown the current locker contract which also force-unlock all locked tokens
      */
-    function shutdown() external requiresAuth {
+    function shutdown() external onlyOwner {
         if (isShutdown) revert IsShutdown();
 
         isShutdown = true;
