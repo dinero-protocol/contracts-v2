@@ -18,16 +18,6 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
     using SafeTransferLib for ERC20;
 
     /**
-        @notice Balance details
-        @param  locked           uint224  Overall locked amount
-        @param  nextUnlockIndex  uint32   Index of earliest next unlock
-     */
-    struct Balance {
-        uint224 locked;
-        uint32 nextUnlockIndex;
-    }
-
-    /**
         @notice Lock balance details
         @param  amount      uint224  Locked amount in the lock
         @param  unlockTime  uint32   Unlock time of the lock
@@ -35,6 +25,17 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
     struct LockedBalance {
         uint224 amount;
         uint32 unlockTime;
+    }
+
+    /**
+        @notice Balance details
+        @param  locked           uint224  Overall locked amount
+        @param  nextUnlockIndex  uint32   Index of earliest next unlock
+     */
+    struct Balance {
+        uint224 locked;
+        uint32 nextUnlockIndex;
+        LockedBalance[] lockedBalances;
     }
 
     /**
@@ -58,7 +59,6 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
     Epoch[] public epochs;
 
     mapping(address => Balance) public balances;
-    mapping(address => LockedBalance[]) public userLocks;
 
     bool public isShutdown;
 
@@ -69,7 +69,6 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
     error ZeroAddress();
     error ZeroAmount();
     error IsShutdown();
-    error InvalidIndex();
 
     event Shutdown(uint256 timestamp);
     event Locked(
@@ -81,13 +80,9 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
     event Withdrawn(address indexed account, uint256 amount, bool relock);
 
     /**
-        @param  _owner      address  Owner address    
         @param  _btrfly     address  BTRFLY token address
      */
-    constructor(
-        address _owner,
-        address _btrfly
-    ) {
+    constructor(address _btrfly) {
         if (_btrfly == address(0)) revert ZeroAddress();
         btrfly = ERC20(_btrfly);
 
@@ -131,8 +126,8 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         returns (uint256 amount)
     {
         // Using storage as it's actually cheaper than allocating a new memory based variable
-        LockedBalance[] storage locks = userLocks[_account];
         Balance storage userBalance = balances[_account];
+        LockedBalance[] storage locks = userBalance.lockedBalances;
         uint256 nextUnlockIndex = userBalance.nextUnlockIndex;
 
         amount = balances[_account].locked;
@@ -174,7 +169,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
     {
         if (_epochIndex >= epochs.length) return 0;
 
-        LockedBalance[] storage locks = userLocks[_account];
+        LockedBalance[] storage locks = balances[_account].lockedBalances;
 
         uint256 epochTime = epochs[_epochIndex].date;
         uint256 cutoffEpoch = epochTime - LOCK_DURATION;
@@ -214,7 +209,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         view
         returns (uint256 amount)
     {
-        LockedBalance[] storage locks = userLocks[_account];
+        LockedBalance[] storage locks = balances[_account].lockedBalances;
 
         uint256 locksLength = locks.length;
         uint256 currentEpoch = (block.timestamp / WEEK) * WEEK;
@@ -344,8 +339,8 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
             LockedBalance[] memory lockData
         )
     {
-        LockedBalance[] storage locks = userLocks[_account];
         Balance storage userBalance = balances[_account];
+        LockedBalance[] storage locks = userBalance.lockedBalances;
         uint256 nextUnlockIndex = userBalance.nextUnlockIndex;
         uint256 idx;
 
@@ -441,7 +436,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         }
 
         uint256 unlockTime = lockEpoch + LOCK_DURATION;
-        LockedBalance[] storage locks = userLocks[_account];
+        LockedBalance[] storage locks = balance.lockedBalances;
         uint256 idx = locks.length;
 
         // If the latest user lock is smaller than this lock, add a new entry to the end of the list
@@ -514,8 +509,8 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         address _withdrawTo
     ) internal {
         // Using storage as it's actually cheaper than allocating a new memory based variable
-        LockedBalance[] storage locks = userLocks[_account];
         Balance storage userBalance = balances[_account];
+        LockedBalance[] storage locks = userBalance.lockedBalances;
         uint224 locked;
         uint256 length = locks.length;
 

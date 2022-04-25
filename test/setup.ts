@@ -17,7 +17,7 @@ before(async function () {
   const btrfly = await ethers.getContractAt('BTRFLY', btrflyAddress);
   const rlBtrfly = await (
     await ethers.getContractFactory('RLBTRFLY')
-  ).deploy(admin.address, btrfly.address);
+  ).deploy(btrfly.address);
 
   // Fund the admin address with some BTRFLY for testing purposes
   await btrfly.connect(multisig).transfer(admin.address, adminBtrflyBalance);
