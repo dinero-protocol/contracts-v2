@@ -47,16 +47,22 @@ contract Mariposa is Ownable{
 
     event DepartmentAdded(uint indexed id);
 
-    event DepartmentAdjustmentSet(bool addAdjustment, uint indexed id, uint adjustmentRate, uint adjustmentTarget);
+    // event DepartmentAdjustmentSet(bool addAdjustment, uint indexed id, uint adjustmentRate, uint adjustmentTarget);
+    event DepartmentAdjustmentSet(uint mintRate);
 
     event AddressDepartmentSet(uint indexed department, address recipient);
 
     /// @notice combines the info and adjustment structs of the staking distributor
-    struct Department{
-        bool addAdjustment;
+    // struct Department{
+    //     bool addAdjustment;
+    //     uint mintRate;
+    //     uint adjustmentRate;
+    //     uint adjustmentTarget;
+    // }
+
+    struct Department {
         uint mintRate;
-        uint adjustmentRate;
-        uint adjustmentTarget;
+        uint lastDistributionEpoch; 
     }
 
     address public btrfly;
@@ -64,11 +70,10 @@ contract Mariposa is Ownable{
     uint public immutable cap;
     uint public departmentCount;
     uint public epochSeconds;
-    uint public lastEpoch;
 
     mapping(address => uint) public getAddressDepartment;
     mapping(uint => Department) public getDepartment;
-    mapping(uint => uint) public getDepartmentBalance;
+    mapping(uint => uint) public getDepartmentBalance; 
 
     /// @param btrfly_ : address of the btrfly token
     /// @param cap_ : (in wei units) cap for btrfly token
@@ -84,42 +89,41 @@ contract Mariposa is Ownable{
         cap = cap_;
         epochSeconds = epochSeconds_;
     }
-
+    
     /**
         @notice fork of Olympus V1 Staking Distributor Fork method, with some differences :
         - increases budgets instead of minting tokens directly
         - increases budgets by fixed amounts instead of based on % of supply
         - triggers adjustments even if mintRate is zero for department
-    */
+     */
     /// @dev adjustments occur here instead of in a seperate adjust() method
-    function distribute() public{
+    function distribute(uint departmentId) public {
         uint currentEpoch = block.timestamp / epochSeconds;
+        uint lastEpoch = getDepartment[departmentId].lastDistributionEpoch; 
         require (currentEpoch > lastEpoch, "Mariposa : distribution event already occurred this epoch");
         uint totalSupplyOutstanding = currentOutstanding() + IERC20(btrfly).totalSupply();
-        for (uint i = 0; i < currentEpoch - lastEpoch; i++){
-            for (uint j = 1; j < departmentCount + 1 ; j++){
-                if (getDepartment[j].mintRate > 0){
-                    getDepartmentBalance[j] += getDepartment[j].mintRate;
-                    totalSupplyOutstanding += getDepartment[j].mintRate;
-                    require(totalSupplyOutstanding < cap, "Mariposa : Cap exceeded");
-                    emit DepartmentTransfer(0, j, getDepartment[j].mintRate);
-                }
-                if (getDepartment[j].adjustmentRate > 0){
-                    if(getDepartment[j].addAdjustment){
-                        getDepartment[j].mintRate += getDepartment[j].adjustmentRate;
-                        if ( getDepartment[j].mintRate >= getDepartment[j].adjustmentTarget ) {
-                            getDepartment[j].adjustmentRate = 0;
-                        }
-                    }
-                    else{
-                        getDepartment[j].mintRate -= getDepartment[j].adjustmentRate;
-                        if ( getDepartment[j].mintRate <= getDepartment[j].adjustmentTarget ) {
-                            getDepartment[j].adjustmentRate = 0;
-                        }
-                    }
-                }
-            }
+        if (getDepartment[departmentId].mintRate > 0) {
+            getDepartmentBalance[departmentId] += getDepartment[departmentId].mintRate * (currentEpoch - lastEpoch); 
+
+            totalSupplyOutstanding += getDepartment[departmentId].mintRate * (currentEpoch - lastEpoch); 
+            require(totalSupplyOutstanding < cap, "Mariposa : Cap exceeded");
+
+            emit DepartmentTransfer(0, departmentId, getDepartment[departmentId].mintRate * (currentEpoch - lastEpoch));
         }
+
+        getDepartment[departmentId].lastDistributionEpoch = currentEpoch; 
+    }
+
+    /// @notice Calls distribute on the department before updating the mint rate
+    /// @param departmentId : the id for the department
+    /// @param mintRate_ : amount of emissions to give per epoch
+    function setMintRate(uint departmentId, uint mintRate_) public onlyOwner {
+        distribute(departmentId);
+
+        Department storage department = getDepartment[departmentId];
+        department.mintRate = mintRate_; 
+
+        emit DepartmentAdjustmentSet(mintRate_); 
     }
 
     // deddaf gnitteg acraB ni syob ehT //
@@ -138,43 +142,32 @@ contract Mariposa is Ownable{
     }
 
     /// @notice adds a department for serving emissions to
-    /// @param addAdjustment_ : if an adjustment is provided, is it to increase emissions
     /// @param mintRate_ : starting amount of emissions to give per epoch
-    /// @param adjustmentRate_ : rate of adjustment (zero if no adjustment)
-    /// @param adjustmentTarget_ : target for adjustment (only applies if adjustmentRate_ > 0)
+    /// @param lastDistributionEpoch_ : the epoch when tokens were distributed
     function addDepartment(
-            bool addAdjustment_,
-            uint mintRate_,
-            uint adjustmentRate_,
-            uint adjustmentTarget_
-        ) external onlyOwner {
-            departmentCount++;
+        uint mintRate_,
+        uint lastDistributionEpoch_
+    ) external onlyOwner {
+        departmentCount++; 
 
-            getDepartment[departmentCount] = Department(
-                addAdjustment_,
-                mintRate_,
-                adjustmentRate_,
-                adjustmentTarget_
-            );
+        getDepartment[departmentCount] = Department(
+            mintRate_,
+            lastDistributionEpoch_
+        );
 
-            emit DepartmentAdded(departmentCount);
+        emit DepartmentAdded(departmentCount);
     }
 
-    /// @param addAdjustment_ : whether the adjustment will increase emissions
-    /// @param departmentId : id of the department to execute the adjustment
-    /// @param adjustmentRate_ : rate of adjustment
-    /// @param adjustmentTarget_ : target mintRate
+    /// @param mintRate_ : emissions to give per epoch
+    /// @param departmentId : the id for the department
     function setDepartmentAdjustment(
-            bool addAdjustment_, 
-            uint departmentId, 
-            uint adjustmentRate_, 
-            uint adjustmentTarget_
-        ) external onlyOwner {
-            Department storage department = getDepartment[departmentId];
-            department.addAdjustment = addAdjustment_;
-            department.adjustmentRate = adjustmentRate_;
-            department.adjustmentTarget = adjustmentTarget_;
-            emit DepartmentAdjustmentSet(addAdjustment_, departmentId, adjustmentRate_, adjustmentTarget_);
+        uint mintRate_, 
+        uint departmentId
+    ) external onlyOwner {
+        Department storage department = getDepartment[departmentId];
+        department.mintRate = mintRate_; 
+
+        emit DepartmentAdjustmentSet(mintRate_); 
     }
 
     /// @param departmentId_ : id of the department to add the address to
@@ -190,6 +183,11 @@ contract Mariposa is Ownable{
     function request(uint amount) external{
         uint callerDepartment = getAddressDepartment[msg.sender];
         require(callerDepartment != 0, "Mariposa : msg.sender does not have permission to mint BTRFLY");
+
+        // calls distribute to update the balance of each department before minting
+        if (getDepartmentBalance[callerDepartment] < amount) {
+            distribute(callerDepartment);
+        }
         getDepartmentBalance[callerDepartment] -= amount;
         IBTRFLY(btrfly).mint(msg.sender,amount);
         emit DepartmentTransfer(callerDepartment, 0, amount);

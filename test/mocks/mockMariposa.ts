@@ -1,4 +1,4 @@
-import { Contract, Signer } from "ethers";
+import { Signer } from "ethers";
 import { ethers, network } from "hardhat";
 
 
@@ -57,4 +57,5 @@ export async function setupBTRFLY(btrfly_addr: string, signer: Signer){
     const BTRFLYContract = await ethers.getContractAt("BTRFLY", btrfly_addr, signer);
     return BTRFLYContract; 
 }
+
 

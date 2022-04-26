@@ -16,9 +16,9 @@
 
 */
 
-import { ethers, network } from "hardhat";
+import { ethers } from "hardhat";
 import { Contract, Signer } from "ethers";
-import { addDepartments, callsDistribute, mintBTRFLY, setDepartmentAddress, setDepartmentAdjustment, setExtraDepartment, vaultIsMariposa } from "./its";
+import { addDepartments, epochDistributions, mintBTRFLY, setDepartmentAddress, setDepartmentAdjustment, setExtraDepartment, totalEmissions, updateDistributions, vaultIsMariposa } from "./its";
 import { impersonateSigner, setupMariposa, setupBTRFLY } from "./mocks/mockMariposa";
 
 export function MariposaTest(): void {
@@ -93,7 +93,7 @@ export function MariposaTest(): void {
         })
 
         it("Adds departments that report to Mariposa for minting tokens", async function() {
-            await addDepartments(Mariposa, multisigSigner, department1_addr, department2_addr);
+            await addDepartments(Mariposa, multisigSigner);
         })
 
         it("Sets the address of a department", async function () {
@@ -104,12 +104,24 @@ export function MariposaTest(): void {
             await setExtraDepartment(Mariposa, multisigSigner, department1_addr);
         })
 
-        it("Should update the adjustment rate and adjustment target of each department accordingly", async function () {
+        it("Should update the mint rate of each department accordingly", async function () {
             await setDepartmentAdjustment(Mariposa, multisigSigner);
         })
 
-        it("Should ensure distributions are correct", async function () {
-            await callsDistribute(Mariposa);
+        it("Should give the total number of tokens to be added to the departments next epoch", async function () {
+            await totalEmissions(Mariposa);
+        })
+
+        it("Call distribute updating the respective fields", async function () {
+            await updateDistributions(Mariposa);
+        })
+
+        it("Checks we aren't calling the distribute function more than once per epoch", async function () {
+            await epochDistributions(Mariposa);
+        })
+
+        it("Should check that requests update department budgets correctly", async function () {
+            
         })
 
 

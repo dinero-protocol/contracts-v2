@@ -1,6 +1,6 @@
 import {expect} from "chai";
 import { Contract, Signer } from "ethers";
-import { MariposaTest } from "./Mariposa";
+const hre = require("hardhat");
 
 /**
  * Checks that the vault for BTRFLY is Mariposa
@@ -53,24 +53,23 @@ export async function mintBTRFLY(
 export async function addDepartments(
     Mariposa: Contract, 
     multisigSigner: Signer, 
-    department1Addr: string,
-    department2Addr: string
     ) {
     let count1 = await Mariposa.departmentCount();
 
     // adds a department in Mariposa
-    await Mariposa.connect(multisigSigner).addDepartment(true, "2000", "10000", "100000");
-    let count2 = await Mariposa.departmentCount();
+    let mintRate1 = "25"; 
+    await Mariposa.connect(multisigSigner).addDepartment(mintRate1, 0);
 
+    let count2 = await Mariposa.departmentCount();
+    
     // adds another department in Mariposa
-    await Mariposa.connect(multisigSigner).addDepartment(false, 0, 0, 0);
+    let mintRate2 = "0"; 
+    await Mariposa.connect(multisigSigner).addDepartment(mintRate2, 0);
+
     let count3 = await Mariposa.departmentCount();
 
     console.log(`\tThe total number of departments that report to Mariposa is now ${count2}`);
     expect(count1).to.be.equals(count2.sub(1)).to.be.equals(count3.sub(2));
-
-    await Mariposa.connect(multisigSigner).setAddressDepartment(1, department1Addr);
-    await Mariposa.connect(multisigSigner).setAddressDepartment(2, department2Addr);
 }
 
 /**
@@ -128,15 +127,81 @@ export async function setDepartmentAdjustment(
     multisigSigner: Signer,  
 ) {
     // sets adjustment for the second department
-    await Mariposa.connect(multisigSigner).setDepartmentAdjustment(true, 2, 500, 3500);
+    let newMintRate = "5";
+    await Mariposa.connect(multisigSigner).setDepartmentAdjustment(newMintRate, 2);
 
     let department2 = await Mariposa.getDepartment(2);
-    let expected_adjustmentRate2 = department2.adjustmentRate;
+    let expected_mintRate = department2.mintRate;
 
-    expect(500).to.equals(expected_adjustmentRate2); 
+    expect(newMintRate).to.equals(expected_mintRate); 
 }
 
-export async function callsDistribute(Mariposa: Contract) {
-    await Mariposa.distribute({"gasLimit": Number("30000000")});
+/**
+ * Logs the total mint rate
+ * @param Mariposa 
+ */
+export async function totalEmissions(Mariposa: Contract) {
+    let totalMintRate = await Mariposa.currentEmissions();
+    console.log(`\tTotal emissions across all departments is ${totalMintRate}`);
+    expect(totalMintRate).to.equals(30)
+}
+
+/**
+ * Updates the different department fields by making a call to "distribute"
+ * @param Mariposa 
+ */
+export async function updateDistributions(Mariposa: Contract) {
+    // returns the number of departments and the totalSupply being minted
+    let count = await Mariposa.departmentCount(); 
+    let totalSupply = parseInt(await Mariposa.currentOutstanding());
+
+    // calls distribute on each department
+    for (let i = 1; i <= count; i++){
+        await Mariposa.distribute(i);
+        let departmentBalance = parseInt(await Mariposa.getDepartmentBalance(i));
+
+        totalSupply += departmentBalance; 
+    }
+
+    let currentOutstanding = await Mariposa.currentOutstanding();
+    expect(currentOutstanding).to.equals(totalSupply);
+    
+}
+
+/**
+ * Fast forward eight hours into the future
+ */
+export async function fastForwardEightHours() {
+    console.log(`\t⌛ Fast forwarding 8 hours`);
+    await hre.network.provider.send("evm_increaseTime", [60 * 60 * 8]);
+    await hre.network.provider.send("evm_mine");
+    for (let i = 1; i <= 60 * 60; i++) { 
+        await hre.network.provider.send("evm_mine");
+    }
+}
+
+/**
+ * Calls distribute before and after eight hours have passed
+ * @param Mariposa 
+ */
+export async function epochDistributions(Mariposa: Contract) {
+    let count = await Mariposa.departmentCount(); 
+    let err; 
+
+    try {
+        for (let i = 1; i <= count; i++){
+            await Mariposa.distribute(i); 
+        }
+        err =  `\tWarning! Distribute is being called less than eight hours after the last distribution.`
+    }
+    catch (Error) {
+        fastForwardEightHours(); 
+        for (let i = 1; i <= count; i++){
+            await Mariposa.distribute(i); 
+        }
+        err = `\tDistribution call is only occurring after an eight hour period.`
+    }
+    console.log(err);
+    expect(err).to.equals(`\tDistribution call is only occurring after an eight hour period.`);
 }
 
