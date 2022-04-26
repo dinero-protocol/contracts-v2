@@ -47,19 +47,11 @@ contract Mariposa is Ownable{
 
     event DepartmentAdded(uint indexed id);
 
-    // event DepartmentAdjustmentSet(bool addAdjustment, uint indexed id, uint adjustmentRate, uint adjustmentTarget);
     event DepartmentAdjustmentSet(uint mintRate);
 
     event AddressDepartmentSet(uint indexed department, address recipient);
 
     /// @notice combines the info and adjustment structs of the staking distributor
-    // struct Department{
-    //     bool addAdjustment;
-    //     uint mintRate;
-    //     uint adjustmentRate;
-    //     uint adjustmentTarget;
-    // }
-
     struct Department {
         uint mintRate;
         uint lastDistributionEpoch; 

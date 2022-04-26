@@ -205,3 +205,49 @@ export async function epochDistributions(Mariposa: Contract) {
     expect(err).to.equals(`\tDistribution call is only occurring after an eight hour period.`);
 }
 
+/**
+ * Update department budgets correctly through request calls
+ * @param Mariposa 
+ * @param BTRFLY 
+ * @param department_addr1 
+ * @param department_addr2 
+ * @param departmentSigner1 
+ * @param departmentSigner2 
+ */
+export async function departmentRequests(
+    Mariposa: Contract, 
+    BTRFLY: Contract, 
+    department_addr1: string, 
+    department_addr2: string,
+    departmentSigner1: Signer, 
+    departmentSigner2: Signer
+) {
+
+    // balance of BTRFLY tokens present in department 1 before call to request
+    const btrfly_department1_before = await BTRFLY.balanceOf(department_addr1);
+    let departmentBalance1 = await Mariposa.getDepartmentBalance(1); 
+    let requestedAmount = departmentBalance1; 
+    await Mariposa.connect(departmentSigner1).request(requestedAmount); 
+
+    // balance of BTRFLY tokens present in department 1 after call to request
+    const btrfly_department1_after = await BTRFLY.balanceOf(department_addr1);
+    const departmentBalance1_after = await Mariposa.getDepartmentBalance(1);
+  
+    expect(btrfly_department1_after).to.be.gt(btrfly_department1_before);
+    expect(departmentBalance1_after).to.be.equals(departmentBalance1.sub(requestedAmount));
+
+
+    // balance of BTRFLY tokens present in department 2 before call to request
+    const btrfly_department2_before = await BTRFLY.balanceOf(department_addr2);
+    let departmentBalance2 = await Mariposa.getDepartmentBalance(2); 
+    let requestedAmount2 = departmentBalance2.div(2);
+    await Mariposa.connect(departmentSigner2).request(requestedAmount2); 
+
+    // balance of BTRFLY tokens present in department 2 after call to request
+    const btrfly_department2_after = await BTRFLY.balanceOf(department_addr2);
+    const departmentBalance2_after = await Mariposa.getDepartmentBalance(2);
+
+    expect(btrfly_department2_after).to.be.gt(btrfly_department2_before);
+    expect(departmentBalance2_after).to.be.equals(departmentBalance2.sub(requestedAmount2));
+}
+

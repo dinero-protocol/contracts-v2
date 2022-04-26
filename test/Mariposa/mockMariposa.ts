@@ -1,7 +1,6 @@
 import { Signer } from "ethers";
 import { ethers, network } from "hardhat";
 
-
 /**
  * Impersonates the multisig address
  * @returns impersonated ownerSigner

@@ -18,8 +18,8 @@
 
 import { ethers } from "hardhat";
 import { Contract, Signer } from "ethers";
-import { addDepartments, epochDistributions, mintBTRFLY, setDepartmentAddress, setDepartmentAdjustment, setExtraDepartment, totalEmissions, updateDistributions, vaultIsMariposa } from "./its";
-import { impersonateSigner, setupMariposa, setupBTRFLY } from "./mocks/mockMariposa";
+import { addDepartments, departmentRequests, epochDistributions, mintBTRFLY, setDepartmentAddress, setDepartmentAdjustment, setExtraDepartment, totalEmissions, updateDistributions, vaultIsMariposa } from "./Mariposa/its";
+import { impersonateSigner, setupMariposa, setupBTRFLY } from "./Mariposa/mockMariposa";
 
 export function MariposaTest(): void {
 
@@ -121,14 +121,11 @@ export function MariposaTest(): void {
         })
 
         it("Should check that requests update department budgets correctly", async function () {
-            
+            await departmentRequests(Mariposa, BTRFLY, department1_addr, department2_addr,department1Signer, department2Signer);
         })
-
-
     });
-
 }
 
-MariposaTest()
+MariposaTest();
 
 
