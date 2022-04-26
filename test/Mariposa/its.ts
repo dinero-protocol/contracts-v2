@@ -10,6 +10,7 @@ const hre = require("hardhat");
  */
 export async function vaultIsMariposa(BTRFLY: Contract, multisigSigner: Signer, Mariposa_addr: string){
     const vault_addr = await BTRFLY.connect(multisigSigner).vault(); 
+    console.log(`\t🔐 The vault which has the ability to mint btrfly tokens is ${vault_addr} 🔐`);
     expect(vault_addr).to.be.equals(Mariposa_addr); 
 }
 
@@ -35,11 +36,11 @@ export async function mintBTRFLY(
     }
     catch (Error)
     {
-        console.log(`\tWhen vault is set to the multisig tokens are not minted.`);
-        await BTRFLY.connect(mariposaSigner).mint(walletAddr, txnAmt);
+        console.log(`\t🚫 When vault is set to the multisig and error is thrown as tokens are not minted. 🚫`);
     }
+    await BTRFLY.connect(mariposaSigner).mint(walletAddr, txnAmt);
     const balAfter = await BTRFLY.balanceOf(walletAddr); 
-    console.log(`\tThe balance of the wallet after minting with vault set as Mariposa is ${balAfter}`);
+    console.log(`\t💰 The balance of the wallet after minting with vault set as Mariposa is ${balAfter} 💰`);
 
     expect(balBefore).to.be.lt(balAfter);
     expect(balAfter).to.be.equals(txnAmt);
@@ -57,7 +58,7 @@ export async function addDepartments(
     let count1 = await Mariposa.departmentCount();
 
     // adds a department in Mariposa
-    let mintRate1 = "25"; 
+    let mintRate1 = "2500000000"; 
     await Mariposa.connect(multisigSigner).addDepartment(mintRate1, 0);
 
     let count2 = await Mariposa.departmentCount();
@@ -68,7 +69,7 @@ export async function addDepartments(
 
     let count3 = await Mariposa.departmentCount();
 
-    console.log(`\tThe total number of departments that report to Mariposa is now ${count2}`);
+    console.log(`\t🏛  The total number of departments that report to Mariposa is now ${count3} 🏛`);
     expect(count1).to.be.equals(count2.sub(1)).to.be.equals(count3.sub(2));
 }
 
@@ -127,7 +128,7 @@ export async function setDepartmentAdjustment(
     multisigSigner: Signer,  
 ) {
     // sets adjustment for the second department
-    let newMintRate = "5";
+    let newMintRate = "5000000000";
     await Mariposa.connect(multisigSigner).setDepartmentAdjustment(newMintRate, 2);
 
     let department2 = await Mariposa.getDepartment(2);
@@ -143,7 +144,15 @@ export async function setDepartmentAdjustment(
 export async function totalEmissions(Mariposa: Contract) {
     let totalMintRate = await Mariposa.currentEmissions();
     console.log(`\tTotal emissions across all departments is ${totalMintRate}`);
-    expect(totalMintRate).to.equals(30)
+
+    let count = await Mariposa.departmentCount(); 
+    let mintCount = 0;
+    for (let i = 1; i <= count; i++){
+        let department = await Mariposa.getDepartment(i);
+        mintCount += parseInt(department.mintRate);
+    }
+
+    expect(totalMintRate).to.equals(mintCount);
 }
 
 /**

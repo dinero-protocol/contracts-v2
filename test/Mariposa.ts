@@ -91,7 +91,8 @@ export function MariposaTest(): void {
         it("Should ensure that only Mariposa has the ability to mint BTRFLY tokens", async function() {
             await mintBTRFLY(BTRFLY, multisigSigner, mariposaSigner, wallet_addr, txnAmt);
         })
-
+        
+        // changes should be made to these after the updates to Mariposa Contract
         it("Adds departments that report to Mariposa for minting tokens", async function() {
             await addDepartments(Mariposa, multisigSigner);
         })
