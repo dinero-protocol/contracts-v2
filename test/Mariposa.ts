@@ -37,7 +37,7 @@ export function MariposaTest(): void {
     let department1_addr: string;
     let department2_addr: string;
     let wallet_addr: string;
-    let multisig_addr = "0xA52Fd396891E7A74b641a2Cb1A6999Fcf56B077e";
+    const multisig_addr = "0xA52Fd396891E7A74b641a2Cb1A6999Fcf56B077e";
 
     const btrfly = "0xC0d4Ceb216B3BA9C3701B291766fDCbA977ceC3A";
     const cap = "5000000000000000000000000";                                 // in wei 
@@ -125,7 +125,7 @@ export function MariposaTest(): void {
         })
 
         it("Should update the mint rate of an existing department and ensure we don't exceed the cap", async function () {
-            await updateMint(Mariposa, BTRFLY, multisigSigner, cap);
+            await updateMint(Mariposa, multisigSigner, cap);
         })
 
     });

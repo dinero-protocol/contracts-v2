@@ -5,7 +5,7 @@ const hre = require("hardhat");
 /**
  * Checks that the vault for BTRFLY is Mariposa
  * @param BTRFLY 
- * @param signer 
+ * @param multisigSigner 
  * @param Mariposa_addr 
  */
 export async function vaultIsMariposa(BTRFLY: Contract, multisigSigner: Signer, Mariposa_addr: string){
@@ -285,9 +285,14 @@ export async function departmentRequests(
     expect(departmentBalance2_after).to.be.equals(departmentBalance2 - requestedAmount2);
 }
 
+/**
+ * Update the mint rates and department balances 
+ * @param Mariposa 
+ * @param multisigSigner 
+ * @param cap 
+ */
 export async function updateMint(
     Mariposa: Contract, 
-    BTRFLY: Contract,
     multisigSigner: Signer,
     cap: any
 ) {
