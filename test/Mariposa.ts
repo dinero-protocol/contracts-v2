@@ -18,7 +18,7 @@
 
 import { ethers } from "hardhat";
 import { Contract, Signer } from "ethers";
-import { addDepartments, departmentRequests, epochDistributions, mintBTRFLY, setDepartmentAddress, setDepartmentAdjustment, setExtraDepartment, totalEmissions, updateDistributions, vaultIsMariposa } from "./Mariposa/its";
+import { addDepartments, departmentRequests, epochDistributions, mintBTRFLY, setDepartmentAddress, setDepartmentAdjustment, setExtraDepartment, totalEmissions, updateDistributions, updateMint, vaultIsMariposa } from "./Mariposa/its";
 import { impersonateSigner, setupMariposa, setupBTRFLY } from "./Mariposa/mockMariposa";
 
 export function MariposaTest(): void {
@@ -40,7 +40,7 @@ export function MariposaTest(): void {
     let multisig_addr = "0xA52Fd396891E7A74b641a2Cb1A6999Fcf56B077e";
 
     const btrfly = "0xC0d4Ceb216B3BA9C3701B291766fDCbA977ceC3A";
-    const cap = "5000000000000000000000000";                              // in wei 
+    const cap = "5000000000000000000000000";                                 // in wei 
     const duration_of_epoch = 3600 * 8;                                   // 8 hours 
     const txnAmt = "7000000000000000000";
 
@@ -92,7 +92,6 @@ export function MariposaTest(): void {
             await mintBTRFLY(BTRFLY, multisigSigner, mariposaSigner, wallet_addr, txnAmt);
         })
         
-        // changes should be made to these after the updates to Mariposa Contract
         it("Adds departments that report to Mariposa for minting tokens", async function() {
             await addDepartments(Mariposa, multisigSigner);
         })
@@ -124,6 +123,11 @@ export function MariposaTest(): void {
         it("Should check that requests update department budgets correctly", async function () {
             await departmentRequests(Mariposa, BTRFLY, department1_addr, department2_addr,department1Signer, department2Signer);
         })
+
+        it("Should update the mint rate of an existing department and ensure we don't exceed the cap", async function () {
+            await updateMint(Mariposa, BTRFLY, multisigSigner, cap);
+        })
+
     });
 }
 

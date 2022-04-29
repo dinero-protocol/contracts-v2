@@ -10,7 +10,7 @@ const hre = require("hardhat");
  */
 export async function vaultIsMariposa(BTRFLY: Contract, multisigSigner: Signer, Mariposa_addr: string){
     const vault_addr = await BTRFLY.connect(multisigSigner).vault(); 
-    console.log(`\t🔐 The vault which has the ability to mint btrfly tokens is ${vault_addr} 🔐`);
+    console.log(`\t🔐 The vault which has the ability to mint btrfly tokens is ${vault_addr}.`);
     expect(vault_addr).to.be.equals(Mariposa_addr); 
 }
 
@@ -31,20 +31,33 @@ export async function mintBTRFLY(
 ) {
     const balBefore = await BTRFLY.balanceOf(walletAddr);
     console.log(`\tThe balance of the wallet before minting the tokens is ${balBefore}`);
+
+    // checks to see if multisig can mint btrfly tokens
     try {
-        await BTRFLY.connect(multisigSigner).mint(walletAddr, txnAmt);    
+        await BTRFLY.connect(multisigSigner).mint(walletAddr, txnAmt);  
+        console.log(`\t✅ Multisig mints btrfly tokens.`);  
     }
     catch (Error)
     {
-        console.log(`\t🚫 When vault is set to the multisig and error is thrown as tokens are not minted. 🚫`);
+        console.log(`\t🚫 When multisig tries to mint btrfly an error is thrown and tokens are not minted.`);
     }
-    await BTRFLY.connect(mariposaSigner).mint(walletAddr, txnAmt);
+
+    // checks to see if mariposa can mint btrfly tokens
+    try {
+        await BTRFLY.connect(mariposaSigner).mint(walletAddr, txnAmt);
+        console.log(`\t✅ Mariposa mints btrfly tokens.`);
+    }
+    catch (Error){
+        console.log(`\t🚫 When mariposa tries to mint btrfly an error is thrown and tokens are not minted.`);
+    }
+    
     const balAfter = await BTRFLY.balanceOf(walletAddr); 
-    console.log(`\t💰 The balance of the wallet after minting with vault set as Mariposa is ${balAfter} 💰`);
+    console.log(`\t💰 The balance of the wallet after minting with vault set as Mariposa is ${balAfter}.`);
 
     expect(balBefore).to.be.lt(balAfter);
     expect(balAfter).to.be.equals(txnAmt);
 }
+
 
 /**
  * Adds departments that sends requests to mint btrfly tokens
@@ -69,8 +82,9 @@ export async function addDepartments(
 
     let count3 = await Mariposa.departmentCount();
 
-    console.log(`\t🏛  The total number of departments that report to Mariposa is now ${count3} 🏛`);
-    expect(count1).to.be.equals(count2.sub(1)).to.be.equals(count3.sub(2));
+    console.log(`\t🏛  The total number of departments that report to Mariposa is now ${count3}.`);
+
+    expect(count1).to.be.equals(count2 - 1).to.be.equals(count3 - 2);
 }
 
 /**
@@ -103,17 +117,17 @@ export async function setExtraDepartment(Mariposa: Contract, multisigSigner: Sig
     const count = await Mariposa.departmentCount(); 
     console.log(`\tThe number of departments that was added is ${count}`);
 
-    let extraDepartment = count.add(1); 
+    let extraDepartment = count + 1; 
     let err; 
     try{
         await Mariposa.connect(multisigSigner).setAddressDepartment(extraDepartment, department_addr1);
-        err = `New department address set`
+        err = `✅ New department address set`
     }
     catch (Error){
-        err =  `\tThere are only ${count} departments that exist and so we cannot set a department ${extraDepartment}.`
+        err =  `\t🚫 There are only ${count} departments that exist and so we cannot set a department ${extraDepartment}.`
     }
     console.log(err);
-    expect(err).to.be.equals(`\tThere are only ${count} departments that exist and so we cannot set a department ${extraDepartment}.`);
+    expect(err).to.be.equals(`\t🚫 There are only ${count} departments that exist and so we cannot set a department ${extraDepartment}.`);
 }
 
 /**
@@ -143,7 +157,7 @@ export async function setDepartmentAdjustment(
  */
 export async function totalEmissions(Mariposa: Contract) {
     let totalMintRate = await Mariposa.currentEmissions();
-    console.log(`\tTotal emissions across all departments is ${totalMintRate}`);
+    // console.log(`\tTotal emissions across all departments is ${totalMintRate}`);
 
     let count = await Mariposa.departmentCount(); 
     let mintCount = 0;
@@ -165,6 +179,7 @@ export async function updateDistributions(Mariposa: Contract) {
     let totalSupply = parseInt(await Mariposa.currentOutstanding());
 
     // calls distribute on each department
+    fastForwardEightHours();
     for (let i = 1; i <= count; i++){
         await Mariposa.distribute(i);
         let departmentBalance = parseInt(await Mariposa.getDepartmentBalance(i));
@@ -174,7 +189,6 @@ export async function updateDistributions(Mariposa: Contract) {
 
     let currentOutstanding = await Mariposa.currentOutstanding();
     expect(currentOutstanding).to.equals(totalSupply);
-    
 }
 
 /**
@@ -197,21 +211,32 @@ export async function epochDistributions(Mariposa: Contract) {
     let count = await Mariposa.departmentCount(); 
     let err; 
 
+    // tries calling distribute in the same epoch more than once
     try {
         for (let i = 1; i <= count; i++){
             await Mariposa.distribute(i); 
         }
-        err =  `\tWarning! Distribute is being called less than eight hours after the last distribution.`
+        console.log`\t✅ Another distribution call in the same epoch was successful!`
     }
     catch (Error) {
+        err = `\t🚫 Warning! Distribution call cannot be made in the same epoch.`
+    }
+
+    // calls distribute in the next epoch
+    try {
         fastForwardEightHours(); 
         for (let i = 1; i <= count; i++){
             await Mariposa.distribute(i); 
         }
-        err = `\tDistribution call is only occurring after an eight hour period.`
+        console.log(`\t✅ Distribution call is only occurring after an eight hour period.`);
+
     }
+    catch (Error){
+        err =`\t🚫 Warning! Cannot call distribute after current epoch is up.`
+    }
+        
     console.log(err);
-    expect(err).to.equals(`\tDistribution call is only occurring after an eight hour period.`);
+    expect(err).to.equals(`\t🚫 Warning! Distribution call cannot be made in the same epoch.`);
 }
 
 /**
@@ -235,28 +260,68 @@ export async function departmentRequests(
     // balance of BTRFLY tokens present in department 1 before call to request
     const btrfly_department1_before = await BTRFLY.balanceOf(department_addr1);
     let departmentBalance1 = await Mariposa.getDepartmentBalance(1); 
-    let requestedAmount = departmentBalance1; 
-    await Mariposa.connect(departmentSigner1).request(requestedAmount); 
+    let requestedAmount = departmentBalance1;                               
+    await Mariposa.connect(departmentSigner1).request(requestedAmount);         // requests entire department balance
 
     // balance of BTRFLY tokens present in department 1 after call to request
     const btrfly_department1_after = await BTRFLY.balanceOf(department_addr1);
     const departmentBalance1_after = await Mariposa.getDepartmentBalance(1);
   
-    expect(btrfly_department1_after).to.be.gt(btrfly_department1_before);
-    expect(departmentBalance1_after).to.be.equals(departmentBalance1.sub(requestedAmount));
+    expect(btrfly_department1_after).to.be.equals(btrfly_department1_before + requestedAmount);
+    expect(departmentBalance1_after).to.be.equals(departmentBalance1 - requestedAmount);
 
 
     // balance of BTRFLY tokens present in department 2 before call to request
     const btrfly_department2_before = await BTRFLY.balanceOf(department_addr2);
     let departmentBalance2 = await Mariposa.getDepartmentBalance(2); 
-    let requestedAmount2 = departmentBalance2.div(2);
-    await Mariposa.connect(departmentSigner2).request(requestedAmount2); 
+    let requestedAmount2 = departmentBalance2;
+    await Mariposa.connect(departmentSigner2).request(requestedAmount2);      
 
     // balance of BTRFLY tokens present in department 2 after call to request
     const btrfly_department2_after = await BTRFLY.balanceOf(department_addr2);
     const departmentBalance2_after = await Mariposa.getDepartmentBalance(2);
 
-    expect(btrfly_department2_after).to.be.gt(btrfly_department2_before);
-    expect(departmentBalance2_after).to.be.equals(departmentBalance2.sub(requestedAmount2));
+    expect(btrfly_department2_after).to.be.equals(btrfly_department2_before + requestedAmount2);
+    expect(departmentBalance2_after).to.be.equals(departmentBalance2 - requestedAmount2);
+}
+
+export async function updateMint(
+    Mariposa: Contract, 
+    BTRFLY: Contract,
+    multisigSigner: Signer,
+    cap: any
+) {
+    let currentBal; 
+
+    // resets mint rates to 0 for all departments 
+    let count = await Mariposa.departmentCount();
+    for (let i = 1; i <= count; i++) {
+        await Mariposa.connect(multisigSigner).setDepartmentAdjustment(0, i);
+    }
+    
+    currentBal = await Mariposa.currentOutstanding();
+    console.log(`\tOutstanding balance across all departments after resetting mint rate to zero is ${currentBal}`);
+
+    for (let i = 1; i <= count; i++) {
+        fastForwardEightHours();
+        await Mariposa.connect(multisigSigner).setMintRate(i, "2500000000000000000000000"); 
+    }
+
+    let totalEmissions = await Mariposa.currentEmissions();
+    console.log(`\tThe current total emissions for the next epoch is ${totalEmissions}`); 
+    
+    //tries updating department balance 
+    try {
+        for (let i = 1; i <= count; i++) {
+            fastForwardEightHours();
+            await Mariposa.distribute(); 
+        }
+        console.log(`\t✅ Each department balance updated. `)
+    }
+    catch(err){
+        console.log(`\t🚫 Warning! Current emissions balance is ${totalEmissions}, and so we cannot adjust balances greater or equal to the cap.`)
+    }
+
+    expect(totalEmissions).to.be.gte(cap); 
 }
 
