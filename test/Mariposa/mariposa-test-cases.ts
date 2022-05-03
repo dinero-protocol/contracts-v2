@@ -21,46 +21,62 @@ export async function vaultIsMariposa(
 }
 
 /**
- * Ensures that only Mariposa has the ability to mint btrfly tokens
+ * Tries minting BTRFLY token with multisig set as the signer
  * @param BTRFLY
+ * @param wallet_addr
  * @param multisigSigner
- * @param mariposaSigner
- * @param walletAddr
  * @param txnAmt
  */
-export async function mintBTRFLY(
+export async function notMintBTRFLY(
   BTRFLY: Contract,
+  wallet_addr: string,
   multisigSigner: Signer,
-  mariposaSigner: Signer,
-  walletAddr: string,
   txnAmt: string
 ) {
-  const balBefore = await BTRFLY.balanceOf(walletAddr);
+  const balBefore = await BTRFLY.balanceOf(wallet_addr);
   console.log(
-    `\tThe balance of the wallet before minting the tokens is ${balBefore}`
+    `\tThe balance of the wallet before minting tokens is ${balBefore}`
   );
 
   // checks to see if multisig can mint btrfly tokens
   try {
-    await BTRFLY.connect(multisigSigner).mint(walletAddr, txnAmt);
+    await BTRFLY.connect(multisigSigner).mint(wallet_addr, txnAmt);
     console.log(`\t✅ Multisig mints btrfly tokens.`);
-  } catch (Error) {
-    console.log(
-      `\t🚫 When multisig tries to mint btrfly an error is thrown and tokens are not minted.`
-    );
+  } catch (err) {
+    throw new Error(`🚫 Multisig does not have the permission to mint btrfly!`);
   }
+}
+
+/**
+ * Ensures that only Mariposa has the ability to mint btrfly tokens
+ * @param BTRFLY
+ * @param multisigSigner
+ * @param mariposaSigner
+ * @param wallet_addr
+ * @param txnAmt
+ */
+export async function mintBTRFLY(
+  BTRFLY: Contract,
+  mariposaSigner: Signer,
+  wallet_addr: string,
+  txnAmt: string
+) {
+  const balBefore = await BTRFLY.balanceOf(wallet_addr);
+  console.log(
+    `\tThe balance of the wallet before minting the tokens is ${balBefore}`
+  );
 
   // checks to see if mariposa can mint btrfly tokens
   try {
-    await BTRFLY.connect(mariposaSigner).mint(walletAddr, txnAmt);
+    await BTRFLY.connect(mariposaSigner).mint(wallet_addr, txnAmt);
     console.log(`\t✅ Mariposa mints btrfly tokens.`);
-  } catch (Error) {
-    console.log(
-      `\t🚫 When mariposa tries to mint btrfly an error is thrown and tokens are not minted.`
+  } catch (err) {
+    throw new Error(
+      `🚫 When mariposa tries to mint btrfly an error is thrown and tokens are not minted.`
     );
   }
 
-  const balAfter = await BTRFLY.balanceOf(walletAddr);
+  const balAfter = await BTRFLY.balanceOf(wallet_addr);
   console.log(
     `\t💰 The balance of the wallet after minting with vault set as Mariposa is ${balAfter}.`
   );
@@ -142,20 +158,16 @@ export async function setExtraDepartment(
   console.log(`\tThe number of departments that was added is ${count}`);
 
   const extraDepartment = count + 1;
-  let err;
   try {
     await Mariposa.connect(multisigSigner).setAddressDepartment(
       extraDepartment,
       department_addr1
     );
-    err = `✅ New department address set`;
-  } catch (Error) {
-    err = `\t🚫 There are only ${count} departments that exist and so we cannot set a department ${extraDepartment}.`;
+  } catch (err) {
+    throw new Error(
+      `🚫 Setting an address for a department that does not exist! There are only ${count} departments that exist and so we cannot set a department ${extraDepartment}.`
+    );
   }
-  console.log(err);
-  expect(err).to.be.equals(
-    `\t🚫 There are only ${count} departments that exist and so we cannot set a department ${extraDepartment}.`
-  );
 }
 
 /**
@@ -235,12 +247,11 @@ export async function fastForwardEightHours() {
 }
 
 /**
- * Calls distribute before and after eight hours have passed
+ * Calls distribute in the same epoch
  * @param Mariposa
  */
-export async function epochDistributions(Mariposa: Contract) {
+export async function sameEpoch(Mariposa: Contract) {
   const count = await Mariposa.departmentCount();
-  let err;
 
   // tries calling distribute in the same epoch more than once
   try {
@@ -248,9 +259,19 @@ export async function epochDistributions(Mariposa: Contract) {
       await Mariposa.distribute(i);
     }
     console.log`\t✅ Another distribution call in the same epoch was successful!`;
-  } catch (Error) {
-    err = `\t🚫 Warning! Distribution call cannot be made in the same epoch.`;
+  } catch (err) {
+    throw new Error(
+      `🚫 Warning! Distribution call cannot be made in the same epoch.`
+    );
   }
+}
+
+/**
+ * Calls distribute after eight hours have passed
+ * @param Mariposa
+ */
+export async function epochDistributions(Mariposa: Contract) {
+  const count = await Mariposa.departmentCount();
 
   // calls distribute in the next epoch
   try {
@@ -261,14 +282,11 @@ export async function epochDistributions(Mariposa: Contract) {
     console.log(
       `\t✅ Distribution call is only occurring after an eight hour period.`
     );
-  } catch (Error) {
-    err = `\t🚫 Warning! Cannot call distribute after current epoch is up.`;
+  } catch (err) {
+    throw new Error(
+      `\t🚫 Warning! Cannot call distribute after current epoch is up.`
+    );
   }
-
-  console.log(err);
-  expect(err).to.equals(
-    `\t🚫 Warning! Distribution call cannot be made in the same epoch.`
-  );
 }
 
 /**
@@ -332,7 +350,6 @@ export async function departmentRequests(
 export async function updateMint(
   Mariposa: Contract,
   multisigSigner: Signer,
-  cap: any
 ) {
   let currentBal;
 
@@ -368,10 +385,8 @@ export async function updateMint(
     }
     console.log(`\t✅ Each department balance updated. `);
   } catch (err) {
-    console.log(
-      `\t🚫 Warning! Current emissions balance is ${totalEmissions}, and so we cannot adjust balances greater or equal to the cap.`
+    throw new Error(
+      `🚫 Current emissions balance is ${totalEmissions} which is greater than or equal to the cap.`
     );
   }
-
-  expect(totalEmissions).to.be.gte(cap);
 }

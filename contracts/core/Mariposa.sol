@@ -65,7 +65,6 @@ contract Mariposa is Ownable {
     uint256 public immutable cap;
     uint8 public departmentCount;
     uint16 public epochSeconds;
-    uint256 public previousEpoch;
 
     mapping(address => uint8) public getAddressDepartment;
     mapping(uint8 => Department) public getDepartment;
@@ -93,8 +92,8 @@ contract Mariposa is Ownable {
         - increases budgets instead of minting tokens directly
         - increases budgets by fixed amounts instead of based on % of supply
         - triggers adjustments even if mintRate is zero for department
+        @dev adjustments occur here instead of in a seperate adjust() method
      */
-    /// @dev adjustments occur here instead of in a seperate adjust() method
     function distribute(uint8 departmentId) public {
         uint256 currentEpoch = block.timestamp / epochSeconds;
         uint256 lastEpoch = getDepartment[departmentId].lastDistributionEpoch;
@@ -122,6 +121,7 @@ contract Mariposa is Ownable {
         }
         getDepartment[departmentId].lastDistributionEpoch = currentEpoch;
     }
+
     /**
         @notice Calls distribute on the department before updating the mint rate
         @param departmentId : the id for the department
@@ -140,22 +140,28 @@ contract Mariposa is Ownable {
     }
 
     // deddaf gnitteg acraB ni syob ehT //
-    /// @return emissions : amount of tokens to added to department budgets next epoch
+    /**
+        @return emissions : amount of tokens to added to department budgets next epoch
+     */
     function currentEmissions() public view returns (uint256 emissions) {
         for (uint8 i = 1; i <= departmentCount; i++) {
             emissions += getDepartment[i].mintRate;
         }
     }
 
-    /// @return outstanding : amount of tokens currently available to mint, across all departments
+    /**
+        @return outstanding : amount of tokens currently available to mint, across all departments
+     */
     function currentOutstanding() public view returns (uint256 outstanding) {
         for (uint8 i = 1; i <= departmentCount; i++) {
             outstanding += getDepartmentBalance[i];
         }
     }
 
-    /// @notice adds a department for serving emissions to
-    /// @param mintRate_ : starting amount of emissions to give per epoch
+    /**
+        @notice adds a department for serving emissions to
+        @param mintRate_ : starting amount of emissions to give per epoch
+     */
     function addDepartment(uint256 mintRate_) external onlyOwner {
         departmentCount++;
 
@@ -171,8 +177,11 @@ contract Mariposa is Ownable {
         emit DepartmentAdded(departmentCount);
     }
 
-    /// @param mintRate_ : emissions to give per epoch
-    /// @param departmentId_ : the id for the department
+    /**
+        @notice Adjusts the mint rate of a given department
+        @param mintRate_ : emissions to give per epoch
+        @param departmentId_ : the id for the department
+     */
     function setDepartmentAdjustment(uint256 mintRate_, uint8 departmentId_)
         external
         onlyOwner
@@ -188,6 +197,7 @@ contract Mariposa is Ownable {
     }
 
     /**
+        @notice Assigns an address for the departments
         @param departmentId_ : id of the department to add the address to
         @param recipient_ : address that will added to the department
      */
@@ -208,6 +218,7 @@ contract Mariposa is Ownable {
     }
 
     /**
+        @notice Departments sent requests to mariposa to mint btrfly
         @param amount : amount that msg.sender wishes to collect
         @dev uses assumption that department 0 is not set
      */
