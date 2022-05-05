@@ -124,7 +124,6 @@ describe('Mariposa Contract', () => {
   describe('mintRate', () => {
     it('Should update the mint rate of each department accordingly', async () => {
       const count = await Mariposa.departmentCount();
-      const departments = [department1, department2];
 
       const newMintRate = '5000000000';
       let expected_mintRate;
@@ -167,7 +166,7 @@ describe('Mariposa Contract', () => {
         const totalMintRate = await Mariposa.currentEmissions();
         let mintCount = 0;
         for (let i = 1; i <= count; i++) {
-          let department = await Mariposa.getDepartment(i);
+          const department = await Mariposa.getDepartment(i);
           mintCount += parseInt(department.mintRate);
         }
 
@@ -199,7 +198,7 @@ describe('Mariposa Contract', () => {
 
         for (let i = 1; i <= count; i++) {
           // calculate new department balance against balance from calling distribute
-          let departmentInfo = await Mariposa.getDepartment(i);
+          const departmentInfo = await Mariposa.getDepartment(i);
           const previousEpoch = departmentInfo.lastDistributionEpoch;
           const mintRate = departmentInfo.mintRate;
           totalSupply += mintRate * (currentEpoch - previousEpoch);
@@ -209,7 +208,7 @@ describe('Mariposa Contract', () => {
 
           expect(totalSupply).to.equal(currentOutstanding);
         }
-        let department = await Mariposa.getDepartment(1);
+        const department = await Mariposa.getDepartment(1);
         const latestEpoch = department.lastDistributionEpoch;
 
         expect(currentEpoch).to.equal(latestEpoch);
@@ -227,7 +226,7 @@ describe('Mariposa Contract', () => {
         const currentEpoch = Math.trunc(timestamp / epoch);
 
         // calculate new department balance against balance from calling distribute
-        let departmentInfo = await Mariposa.getDepartment(1);
+        const departmentInfo = await Mariposa.getDepartment(1);
         const previousEpoch = departmentInfo.lastDistributionEpoch;
         const mintRate = departmentInfo.mintRate;
         const totalSupply = mintRate * (currentEpoch - previousEpoch);
@@ -235,7 +234,7 @@ describe('Mariposa Contract', () => {
         await Mariposa.distribute(1);
         const currentOutstanding = await Mariposa.currentOutstanding();
 
-        let department = await Mariposa.getDepartment(1);
+        const department = await Mariposa.getDepartment(1);
         const latestEpoch = department.lastDistributionEpoch;
 
         expect(totalSupply).to.equal(currentOutstanding);
@@ -274,7 +273,7 @@ describe('Mariposa Contract', () => {
       const count = await Mariposa.departmentCount();
       if (count != 0) {
         for (let i = 1; i <= count; i++) {
-          let department = departments[i - 1].getAddress();
+          const department = departments[i - 1].getAddress();
           const btrflyInDepartment_before = await btrfly.balanceOf(department);
           const departmentBalance = await Mariposa.getDepartmentBalance(i);
           const requestedAmount = departmentBalance;

@@ -87,7 +87,7 @@ contract Mariposa is Ownable {
         );
         cap = cap_;
 
-        require(epochSeconds_ > 0, "Mariposa : epoch needs a valid period"); 
+        require(epochSeconds_ > 0, "Mariposa : epoch needs a valid period");
         epochSeconds = epochSeconds_;
     }
 
