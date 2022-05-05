@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title MARIPOSA
-/// @author RealKinando (MarcelFromDaCartel), BabyYodaBaby
+/// @author RealKinando (MarcelFromDaCartel), BabyYodaBaby (Yoda)
 
 interface IBTRFLY {
     function mint(address account_, uint256 amount_) external;
@@ -64,7 +64,7 @@ contract Mariposa is Ownable {
 
     uint256 public immutable cap;
     uint8 public departmentCount;
-    uint16 public epochSeconds;
+    uint16 public immutable epochSeconds;
 
     mapping(address => uint8) public getAddressDepartment;
     mapping(uint8 => Department) public getDepartment;
@@ -131,6 +131,10 @@ contract Mariposa is Ownable {
         public
         onlyOwner
     {
+        require(
+            mintRate_ < cap,
+            "Mariposa: mint rate will exceed cap in the next epoch"
+        );
         distribute(departmentId);
 
         Department storage department = getDepartment[departmentId];
@@ -168,7 +172,7 @@ contract Mariposa is Ownable {
         if (departmentCount > 1) {
             getDepartment[departmentCount] = Department(
                 mintRate_,
-                getDepartment[departmentCount].lastDistributionEpoch
+                getDepartment[departmentCount - 1].lastDistributionEpoch
             );
         } else {
             getDepartment[departmentCount] = Department(mintRate_, 0);
@@ -186,6 +190,10 @@ contract Mariposa is Ownable {
         external
         onlyOwner
     {
+        require(
+            mintRate_ < cap,
+            "Mariposa: mint rate will exceed cap in the next epoch"
+        );
         require(
             departmentId_ != 0,
             "Mariposa : msg.sender does not have permission to update mint rate"
