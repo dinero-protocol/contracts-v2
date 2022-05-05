@@ -3,7 +3,6 @@
 	"plugins": [],
   "rules": {
     "func-visibility": ["warn", { "ignoreConstructors": true }],
-    "compiler-version": ["error","^0.8.0"],
-    "reason-string": ["warn",{"maxLength":100}]
+    "compiler-version": ["error","^0.8.0"]
   }
 }

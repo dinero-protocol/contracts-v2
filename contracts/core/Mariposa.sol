@@ -78,12 +78,16 @@ contract Mariposa is Ownable {
         uint256 cap_,
         uint16 epochSeconds_
     ) {
+        require(btrfly_ != address(0), "Mariposa : invalid address");
         btrfly = btrfly_;
+
         require(
             cap_ > IERC20(btrfly).totalSupply(),
             "Mariposa : cap lower than existing supply"
         );
         cap = cap_;
+
+        require(epochSeconds_ > 0, "Mariposa : epoch needs a valid period"); 
         epochSeconds = epochSeconds_;
     }
 
@@ -194,10 +198,7 @@ contract Mariposa is Ownable {
             mintRate_ < cap,
             "Mariposa: mint rate will exceed cap in the next epoch"
         );
-        require(
-            departmentId_ != 0,
-            "Mariposa : msg.sender does not have permission to update mint rate"
-        );
+        require(departmentId_ != 0, "Mariposa : department id cannot be zero");
         Department storage department = getDepartment[departmentId_];
         department.mintRate = mintRate_;
 
