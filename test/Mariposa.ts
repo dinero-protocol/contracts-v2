@@ -262,9 +262,7 @@ describe('Mariposa Contract', () => {
         await Mariposa.connect(departments[i - 1]).request(requestedAmount);
 
         const btrflyInDepartment_after = await btrfly.balanceOf(department);
-        const departmentBalance_after = await Mariposa.getDepartmentBalance(
-          i
-        );
+        const departmentBalance_after = await Mariposa.getDepartmentBalance(i);
 
         expect(btrflyInDepartment_after).to.equal(
           btrflyInDepartment_before + requestedAmount
@@ -280,13 +278,13 @@ describe('Mariposa Contract', () => {
     it("Should update the mint rate of an existing department and ensure we don't exceed the cap", async () => {
       let count = await Mariposa.departmentCount();
       if (count == 0) {
-         // adds new department with mintRate equal to cap
-         const mintRate1 = '250000000000000';
-         await Mariposa.connect(multisig_signer).addDepartment(mintRate1);
-         await Mariposa.connect(multisig_signer).setAddressDepartment(
-           1,
-           department1.getAddress()
-         );
+        // adds new department with mintRate equal to cap
+        const mintRate1 = '250000000000000';
+        await Mariposa.connect(multisig_signer).addDepartment(mintRate1);
+        await Mariposa.connect(multisig_signer).setAddressDepartment(
+          1,
+          department1.getAddress()
+        );
       }
 
       count = await Mariposa.departmentCount();
@@ -306,5 +304,4 @@ describe('Mariposa Contract', () => {
       }
     });
   });
-  
 });
