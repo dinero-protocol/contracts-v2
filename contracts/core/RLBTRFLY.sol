@@ -429,17 +429,13 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         balance.locked += lockAmount;
         lockedSupply += lockAmount;
 
-        uint256 lockEpoch = (block.timestamp / WEEK) * WEEK;
-
-        if (!_isRelock) {
-            lockEpoch += WEEK;
-        }
-
+        uint256 lockEpoch = (block.timestamp / WEEK) * WEEK + WEEK;
         uint256 unlockTime = lockEpoch + LOCK_DURATION;
         LockedBalance[] storage locks = balance.lockedBalances;
         uint256 idx = locks.length;
 
         // If the latest user lock is smaller than this lock, add a new entry to the end of the list
+        // else, append it to the latest user lock
         if (idx == 0 || locks[idx - 1].unlockTime < unlockTime) {
             locks.push(
                 LockedBalance({
@@ -448,50 +444,12 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
                 })
             );
         } else {
-            // If the latest lock is further in the future, decrease the index
-            // Can only happen if relocking an expired lock after creating a new lock
-            if (locks[idx - 1].unlockTime > unlockTime) {
-                --idx;
-            }
-
-            // If idx points to the epoch when same unlock time, update the lock amount
-            // This is always true with a normal lock but maybe not with relock
-            if (locks[idx - 1].unlockTime == unlockTime) {
-                LockedBalance storage locked = locks[idx - 1];
-                locked.amount += lockAmount;
-            } else {
-                // Handle the case when there's a relock performed after a lock
-                // and there's no lock entry for the current epoch
-                // ie. a list of locks such as "[...][older][current*][next]" but without a "current" lock
-                // thus the need to insert an entry for current epoch at the 2nd to last entry
-                // by copying and inserting the tail entry(next) and then overwrite the length-2 entry
-
-                // Reset idx
-                idx = locks.length;
-
-                // Get the current last item and copy it to the end of the list
-                LockedBalance storage locked = locks[idx - 1];
-                locks.push(
-                    LockedBalance({
-                        amount: locked.amount,
-                        unlockTime: locked.unlockTime
-                    })
-                );
-
-                // Insert current epoch lock entry by overwriting the entry at length-2
-                locked.amount = lockAmount;
-                locked.unlockTime = uint32(unlockTime);
-            }
-        }
-
-        uint256 epochIndex = epochs.length - 1;
-
-        // If relock, epoch should be current and not next, thus need to decrease index to length-2
-        if (_isRelock) {
-            --epochIndex;
+            LockedBalance storage locked = locks[idx - 1];
+            locked.amount += lockAmount;
         }
 
         // Update epoch supply
+        uint256 epochIndex = epochs.length - 1;
         epochs[epochIndex].supply += lockAmount;
 
         emit Locked(_account, lockEpoch, _amount, _isRelock);
