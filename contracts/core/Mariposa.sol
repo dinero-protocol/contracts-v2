@@ -33,14 +33,6 @@ interface IBTRFLY {
 
 */
 
-/// @notice for devs forking : DON'T DELETE RANDOM COMMENTS, DON'T FADE MANDEM/CARTEL LIKE THAT
-
-/**
-
-
-
- */
-
 contract Mariposa is Ownable {
     event DepartmentTransfer(
         uint256 indexed from,
@@ -54,7 +46,7 @@ contract Mariposa is Ownable {
 
     event AddressDepartmentSet(uint256 indexed department, address recipient);
 
-    /// @notice combines the info and adjustment structs of the staking distributor
+    // combines the info and adjustment structs of the staking distributor
     struct Department {
         uint256 mintRate;
         uint256 lastDistributionEpoch;
@@ -70,9 +62,12 @@ contract Mariposa is Ownable {
     mapping(uint8 => Department) public getDepartment;
     mapping(uint8 => uint256) public getDepartmentBalance;
 
-    /// @param btrfly_ : address of the btrfly token
-    /// @param cap_ : (in wei units) cap for btrfly token
-    /// @param epochSeconds_ : duration of an epoch, in seconds
+    /**
+        @param btrfly_        address  Address of the the btrfly token
+        @param cap_           uint256  The cap of the btrfly token (in wei units)
+        @param epochSeconds_  uint16   Duration of an epoch, in seconds
+    
+     */
     constructor(
         address btrfly_,
         uint256 cap_,
@@ -93,10 +88,11 @@ contract Mariposa is Ownable {
 
     /**
         @notice fork of Olympus V1 Staking Distributor Fork method, with some differences :
-        - increases budgets instead of minting tokens directly
-        - increases budgets by fixed amounts instead of based on % of supply
-        - triggers adjustments even if mintRate is zero for department
-        @dev adjustments occur here instead of in a seperate adjust() method
+                - increases budgets instead of minting tokens directly
+                - increases budgets by fixed amounts instead of based on % of supply
+                - triggers adjustments even if mintRate is zero for department
+        @param  departmentId uint8 The ID for a specific department
+        @dev    adjustments occur here instead of in a seperate adjust() method
      */
     function distribute(uint8 departmentId) public {
         uint256 currentEpoch = block.timestamp / epochSeconds;
@@ -128,8 +124,8 @@ contract Mariposa is Ownable {
 
     /**
         @notice Calls distribute on the department before updating the mint rate
-        @param departmentId : the id for the department
-        @param mintRate_ : amount of emissions to give per epoch
+        @param  departmentId  uint8    The ID for a specific department
+        @param  mintRate_     uint256  The amount of emissions to give per epoch
      */
     function setMintRate(uint8 departmentId, uint256 mintRate_)
         public
@@ -147,9 +143,9 @@ contract Mariposa is Ownable {
         emit DepartmentAdjustmentSet(mintRate_);
     }
 
-    // deddaf gnitteg acraB ni syob ehT //
     /**
-        @return emissions : amount of tokens to added to department budgets next epoch
+        @notice Calculates the total mint rate across all departments
+        @return emissions  uint256  The amount of tokens to added to department budgets next epoch
      */
     function currentEmissions() public view returns (uint256 emissions) {
         for (uint8 i = 1; i <= departmentCount; i++) {
@@ -158,7 +154,8 @@ contract Mariposa is Ownable {
     }
 
     /**
-        @return outstanding : amount of tokens currently available to mint, across all departments
+        @notice Calculates the balance of tokens across all departments
+        @return outstanding  uint256  The amount of tokens currently available to mint, across all departments
      */
     function currentOutstanding() public view returns (uint256 outstanding) {
         for (uint8 i = 1; i <= departmentCount; i++) {
@@ -167,8 +164,8 @@ contract Mariposa is Ownable {
     }
 
     /**
-        @notice adds a department for serving emissions to
-        @param mintRate_ : starting amount of emissions to give per epoch
+        @notice Adds a department for serving emissions
+        @param  mintRate_  uint256  The amount of tokens to be distributd per epoch
      */
     function addDepartment(uint256 mintRate_) external onlyOwner {
         departmentCount++;
@@ -187,8 +184,8 @@ contract Mariposa is Ownable {
 
     /**
         @notice Adjusts the mint rate of a given department
-        @param mintRate_ : emissions to give per epoch
-        @param departmentId_ : the id for the department
+        @param  mintRate_      uint256 The amount of tokens to be disttributed per epoch
+        @param  departmentId_  uint8   The ID for a specific department
      */
     function setDepartmentAdjustment(uint256 mintRate_, uint8 departmentId_)
         external
@@ -207,8 +204,8 @@ contract Mariposa is Ownable {
 
     /**
         @notice Assigns an address for the departments
-        @param departmentId_ : id of the department to add the address to
-        @param recipient_ : address that will added to the department
+        @param  departmentId_   uint8    The ID for a specific department
+        @param  recipient_      address  Address that will be mapped to the department
      */
     function setAddressDepartment(uint8 departmentId_, address recipient_)
         external
@@ -228,8 +225,8 @@ contract Mariposa is Ownable {
 
     /**
         @notice Departments sent requests to mariposa to mint btrfly
-        @param amount : amount that msg.sender wishes to collect
-        @dev uses assumption that department 0 is not set
+        @param  amount  uint256  The amount that msg.sender wishes to collect
+        @dev    uses assumption that department 0 is not set
      */
     function request(uint256 amount) external {
         uint8 callerDepartment = getAddressDepartment[msg.sender];

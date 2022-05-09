@@ -20,6 +20,16 @@ describe('Mariposa Contract', () => {
   const epoch = 60 * 60 * 8; // 8 hours
   const txnAmt = '25000000000000000000';
 
+  let snapshotId: string;
+
+  beforeEach(async () => {
+    snapshotId = await ethers.provider.send('evm_snapshot', []);
+  });
+
+  afterEach(async () => {
+    await ethers.provider.send('evm_revert', [snapshotId]);
+  });
+
   before(async () => {
     multisig_signer = await impersonateSigner(multisig_addr);
     [department1, department2, wallet] = await ethers.getSigners();
@@ -86,23 +96,25 @@ describe('Mariposa Contract', () => {
     it('Adds departments that report to Mariposa for minting tokens', async () => {
       const mintRate = ['2500000000', '0'];
 
-      for (let i = 0; i < 2; i++) {
-        await Mariposa.connect(multisig_signer).addDepartment(mintRate[i]);
+      for (let i = 1; i <= 2; i++) {
+        await Mariposa.connect(multisig_signer).addDepartment(mintRate[i - 1]);
 
-        const department = await Mariposa.getDepartment(i + 1);
+        const department = await Mariposa.getDepartment(i);
         const epoch = department.lastDistributionEpoch;
         const count = await Mariposa.departmentCount();
 
         expect(epoch).to.equal(0);
-        expect(count).to.equal(i + 1);
+        expect(count).to.equal(i);
       }
     });
 
     it('Sets the address of a department', async () => {
-      const count = await Mariposa.departmentCount();
       const departments = [department1, department2];
+      const mintRate = ['2500000000', '0'];
 
-      for (let i = 1; i <= count; i++) {
+      for (let i = 1; i <= 2; i++) {
+        // adds new department with mintRate
+        await Mariposa.connect(multisig_signer).addDepartment(mintRate[i - 1]);
         await Mariposa.connect(multisig_signer).setAddressDepartment(
           i,
           departments[i - 1].getAddress()
@@ -118,80 +130,75 @@ describe('Mariposa Contract', () => {
 
   describe('mintRate', () => {
     it('Should update the mint rate of each department accordingly', async () => {
-      let count = await Mariposa.departmentCount();
+      const departments = [department1, department2];
+      const mintRate = ['2500000000', '0'];
+      const newMintRate = ['5000000000', '5000000000'];
 
-      const newMintRate = '5000000000';
-      let expected_mintRate;
-
-      if (count == 0) {
-        // adds new department with mintRate and department address
-        const mintRate = '2500000000';
-        await Mariposa.connect(multisig_signer).addDepartment(mintRate);
+      //  adds new departments with mintRates
+      for (let i = 1; i <= 2; i++) {
+        await Mariposa.connect(multisig_signer).addDepartment(mintRate[i - 1]);
         await Mariposa.connect(multisig_signer).setAddressDepartment(
-          1,
-          department1.getAddress()
+          i,
+          departments[i - 1].getAddress()
         );
-      }
 
-      count = await Mariposa.departmentCount();
-      for (let i = 1; i <= count; i++) {
+        // update mintRate
         await Mariposa.connect(multisig_signer).setDepartmentAdjustment(
-          newMintRate,
+          newMintRate[i - 1],
           i
         );
+
         const department = await Mariposa.getDepartment(i);
-        expected_mintRate = department.mintRate;
+        const expected_mintRate = department.mintRate;
+        expect(newMintRate[i - 1]).to.equals(expected_mintRate);
       }
-      expect(newMintRate).to.equals(expected_mintRate);
     });
 
     it('Should give the total number of tokens to be added to the departments next epoch', async () => {
-      let count = await Mariposa.departmentCount();
+      const departments = [department1, department2];
+      const mintRate = ['5000000000', '5000000000'];
 
-      if (count == 0) {
-        // adds new department with mintRate and department address
-        const mintRate = '2500000000';
-        await Mariposa.connect(multisig_signer).addDepartment(mintRate);
+      for (let i = 1; i <= 2; i++) {
+        await Mariposa.connect(multisig_signer).addDepartment(mintRate[i - 1]);
         await Mariposa.connect(multisig_signer).setAddressDepartment(
-          1,
-          department1.getAddress()
+          i,
+          departments[i - 1].getAddress()
         );
       }
 
-      count = await Mariposa.departmentCount();
+      const count = await Mariposa.departmentCount();
       const totalMintRate = await Mariposa.currentEmissions();
       let mintCount = 0;
 
+      // find total mint rate across all departments
       for (let i = 1; i <= count; i++) {
         const department = await Mariposa.getDepartment(i);
         mintCount += parseInt(department.mintRate);
       }
-
       expect(totalMintRate).to.equals(mintCount);
     });
   });
 
   describe('distribute', () => {
     it('Call distribute once per epoch updating the respective fields', async () => {
-      let count = await Mariposa.departmentCount();
+      const departments = [department1, department2];
+      const mintRate = ['5000000000', '5000000000'];
 
-      if (count == 0) {
-        // adds new department with mintRate and department address
-        const mintRate1 = '2500000000';
-        await Mariposa.connect(multisig_signer).addDepartment(mintRate1);
-        await Mariposa.connect(multisig_signer).setAddressDepartment(
-          1,
-          department1.getAddress()
-        );
-      }
-
-      count = await Mariposa.departmentCount();
       let totalSupply = 0;
 
       // get current epoch
       const { timestamp } = await ethers.provider.getBlock('latest');
       const currentEpoch = Math.trunc(timestamp / epoch);
 
+      for (let i = 1; i <= 2; i++) {
+        await Mariposa.connect(multisig_signer).addDepartment(mintRate[i - 1]);
+        await Mariposa.connect(multisig_signer).setAddressDepartment(
+          i,
+          departments[i - 1].getAddress()
+        );
+      }
+
+      const count = await Mariposa.departmentCount();
       for (let i = 1; i <= count; i++) {
         // calculate new department balance against balance from calling distribute
         const departmentInfo = await Mariposa.getDepartment(i);
@@ -202,33 +209,30 @@ describe('Mariposa Contract', () => {
         await Mariposa.distribute(i);
         const currentOutstanding = await Mariposa.currentOutstanding();
 
-        expect(totalSupply).to.equal(currentOutstanding);
-      }
-      const department = await Mariposa.getDepartment(1);
-      const latestEpoch = department.lastDistributionEpoch;
+        const department = await Mariposa.getDepartment(i);
+        const latestEpoch = department.lastDistributionEpoch;
 
-      expect(currentEpoch).to.equal(latestEpoch);
+        expect(totalSupply).to.equal(currentOutstanding);
+        expect(currentEpoch).to.equal(latestEpoch);
+      }
     });
 
     it('Tries calling distribute on a department in the same epoch', async () => {
-      const count = await Mariposa.departmentCount();
-      if (count != 0) {
-        for (let i = 1; i <= count; i++) {
-          await expect(Mariposa.distribute(i)).to.be.revertedWith(
-            'Mariposa : distribution event already occurred this epoch'
-          );
-        }
-      } else {
-        // adds new department with mintRate and department address
-        const mintRate1 = '0';
-        await Mariposa.connect(multisig_signer).addDepartment(mintRate1);
-        await Mariposa.connect(multisig_signer).setAddressDepartment(
-          1,
-          department1.getAddress()
-        );
+      const departments = [department1, department2];
+      const mintRate = ['5000000000', '5000000000'];
 
-        await Mariposa.distribute(1);
-        await expect(Mariposa.distribute(1)).to.be.revertedWith(
+      for (let i = 1; i <= 2; i++) {
+        await Mariposa.connect(multisig_signer).addDepartment(mintRate[i - 1]);
+        await Mariposa.connect(multisig_signer).setAddressDepartment(
+          i,
+          departments[i - 1].getAddress()
+        );
+      }
+
+      const count = await Mariposa.departmentCount();
+      for (let i = 1; i <= count; i++) {
+        await Mariposa.distribute(i);
+        await expect(Mariposa.distribute(i)).to.be.revertedWith(
           'Mariposa : distribution event already occurred this epoch'
         );
       }
@@ -238,22 +242,20 @@ describe('Mariposa Contract', () => {
   describe('requests', () => {
     it('Should check that requests update department budgets correctly', async () => {
       const departments = [department1, department2];
-      let count = await Mariposa.departmentCount();
+      const mintRate = ['5000000000', '5000000000'];
 
-      if (count == 0) {
-        // adds new department with mintRate and department address
-        const mintRate1 = '250000000000000';
-        await Mariposa.connect(multisig_signer).addDepartment(mintRate1);
+      for (let i = 1; i <= 2; i++) {
+        await Mariposa.connect(multisig_signer).addDepartment(mintRate[i - 1]);
         await Mariposa.connect(multisig_signer).setAddressDepartment(
-          1,
-          department1.getAddress()
+          i,
+          departments[i - 1].getAddress()
         );
-
-        await Mariposa.distribute(1);
       }
 
-      count = await Mariposa.departmentCount();
+      const count = await Mariposa.departmentCount();
       for (let i = 1; i <= count; i++) {
+        await Mariposa.distribute(i);
+
         const department = departments[i - 1].getAddress();
         const btrflyInDepartment_before = await btrfly.balanceOf(department);
         const departmentBalance = await Mariposa.getDepartmentBalance(i);
@@ -276,22 +278,17 @@ describe('Mariposa Contract', () => {
 
   describe('exceed cap', () => {
     it("Should update the mint rate of an existing department and ensure we don't exceed the cap", async () => {
-      let count = await Mariposa.departmentCount();
-      if (count == 0) {
-        // adds new department with mintRate equal to cap
-        const mintRate1 = '250000000000000';
-        await Mariposa.connect(multisig_signer).addDepartment(mintRate1);
+      const departments = [department1, department2];
+      const mintRate = ['0', '0'];
+
+      for (let i = 1; i <= 2; i++) {
+        await Mariposa.connect(multisig_signer).addDepartment(mintRate[i - 1]);
         await Mariposa.connect(multisig_signer).setAddressDepartment(
-          1,
-          department1.getAddress()
+          i,
+          departments[i - 1].getAddress()
         );
       }
-
-      count = await Mariposa.departmentCount();
-      // resets mint rate to zero
-      for (let i = 1; i <= count; i++) {
-        await Mariposa.connect(multisig_signer).setDepartmentAdjustment(0, i);
-      }
+      const count = await Mariposa.departmentCount();
 
       // ensures that mint rate will exceed cap for next epoch
       for (let i = 1; i <= count; i++) {
