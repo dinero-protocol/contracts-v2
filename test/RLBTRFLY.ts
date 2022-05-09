@@ -700,7 +700,7 @@ describe('RLBTRFLY', function () {
       // Simulate the shutdown
       const shutdownEvent = await callAndReturnEvent(rlBtrfly.shutdown, []);
 
-      validateEvent(shutdownEvent, 'Shutdown(uint256)', {});
+      validateEvent(shutdownEvent, 'Shutdown()', {});
 
       // Attempt to lock, which should revert
       await expect(rlBtrfly.lock(account, toBN(1))).to.be.revertedWith(

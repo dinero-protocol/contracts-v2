@@ -70,7 +70,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
     error ZeroAmount();
     error IsShutdown();
 
-    event Shutdown(uint256 timestamp);
+    event Shutdown();
     event Locked(
         address indexed account,
         uint256 indexed epoch,
@@ -99,7 +99,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
 
         isShutdown = true;
 
-        emit Shutdown(block.timestamp);
+        emit Shutdown();
     }
 
     /** 
