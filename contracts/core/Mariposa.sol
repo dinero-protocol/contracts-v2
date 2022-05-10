@@ -120,9 +120,9 @@ contract Mariposa is Ownable {
         // increasing allowances from 0 or positive integer
         if (_amount > currentAllowance) {
             totalAllowances += _amount;
-            // decreasing allowance allowances from non 0 and > currentAllowance integer
+            // decreasing total allowances from non 0 and > currentAllowance integer
         } else {
-            totalAllowances -= _amount;
+            totalAllowances -= (currentAllowance - _amount);
         }
 
         mintAllowances[_contract] = _amount;
