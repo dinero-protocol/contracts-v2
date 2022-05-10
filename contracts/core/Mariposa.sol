@@ -26,6 +26,15 @@ contract Mariposa is Ownable {
     error NotMinter();
     error NoChange();
     /*//////////////////////////////////////////////////////////////
+                                 events
+    //////////////////////////////////////////////////////////////*/
+    event AllowanceSet(address indexed _contract, uint256 _amount);
+    event Requested(
+        address indexed _contract,
+        address indexed _recipient,
+        uint256 amount
+    );
+    /*//////////////////////////////////////////////////////////////
                                  constants functions
     //////////////////////////////////////////////////////////////*/
     IBTRFLY public immutable btrfly;
@@ -76,6 +85,7 @@ contract Mariposa is Ownable {
         totalAllowances -= _amount;
 
         btrfly.mint(_recipient, _amount);
+        emit Requested(msg.sender, _recipient, _amount);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -116,6 +126,7 @@ contract Mariposa is Ownable {
         }
 
         mintAllowances[_contract] = _amount;
+        emit AllowanceSet(_contract, _amount);
     }
 
     /*//////////////////////////////////////////////////////////////
