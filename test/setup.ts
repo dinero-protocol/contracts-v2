@@ -10,7 +10,7 @@ let multisig: SignerWithAddress;
 const btrflyAddress = '0xC0d4Ceb216B3BA9C3701B291766fDCbA977ceC3A';
 const multisigAddress = '0xA52Fd396891E7A74b641a2Cb1A6999Fcf56B077e';
 const adminBtrflyBalance = toBN(100e9);
-const mariposaCap = parseUnits("5000000", 18); // 5M
+const mariposaCap = parseUnits("5000000", 9); // 5M
 
 before(async function () {
   [admin, notAdmin, multisig] = await ethers.getSigners();

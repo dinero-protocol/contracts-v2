@@ -43,45 +43,45 @@ describe('Mariposa', function () {
       const supplyCap = await mariposa.supplyCap();
 
       expect(_btrfly.toLowerCase()).to.equal(btrfly.address.toLowerCase());
-      expect(supplyCap).to.equal(parseUnits('5000000', 18));
+      expect(supplyCap).to.equal(parseUnits('5000000', 9));
     });
   });
 
   describe('request', function () {
     it('Should revert when called by unauthorized minter', async function () {
-      await expect(mariposa.request(notAdmin.address, parseUnits('1', 18))).to.be.revertedWith('NotMinter()');
+      await expect(mariposa.request(notAdmin.address, parseUnits('1', 9))).to.be.revertedWith('NotMinter()');
     });
 
     it('Should set allowance correctly', async function () {
-      await expect(mariposa.setAllowance(admin.address, parseUnits('0', 18))).to.be.revertedWith('ZeroAmount()');
-      await expect(mariposa.setAllowance(ADDRESS_ZERO, parseUnits('1', 18))).to.be.revertedWith('ZeroAddress()');
-      await expect(mariposa.setAllowance(admin.address, parseUnits('5000001', 18))).to.be.revertedWith('ExceedsSupplyCap()');
+      await expect(mariposa.setAllowance(admin.address, parseUnits('0', 9))).to.be.revertedWith('ZeroAmount()');
+      await expect(mariposa.setAllowance(ADDRESS_ZERO, parseUnits('1', 9))).to.be.revertedWith('ZeroAddress()');
+      await expect(mariposa.setAllowance(admin.address, parseUnits('5000001', 9))).to.be.revertedWith('ExceedsSupplyCap()');
       
       const allowanceEvent = await callAndReturnEvent(mariposa.setAllowance, [
-        admin.address, parseUnits('5000000', 18)
+        admin.address, parseUnits('5000000', 9)
       ]);
       validateEvent(allowanceEvent, 'AllowanceSet(address,uint256)', {
         _contract: admin.address,
-        _amount: parseUnits('5000000', 18)
+        _amount: parseUnits('5000000', 9)
       });
 
-      await expect(mariposa.setAllowance(admin.address, parseUnits('5000000', 18))).to.be.revertedWith('NoChange');
+      await expect(mariposa.setAllowance(admin.address, parseUnits('5000000', 9))).to.be.revertedWith('NoChange');
     });
 
     it('Should minter minting tokens to receipient', async function () {
-      await expect(mariposa.request(notAdmin.address, parseUnits('0', 18))).to.be.revertedWith('ZeroAmount()');
-      await expect(mariposa.request(notAdmin.address, parseUnits('5000001', 18))).to.be.revertedWith('ExceedsAllowance()');
+      await expect(mariposa.request(notAdmin.address, parseUnits('0', 9))).to.be.revertedWith('ZeroAmount()');
+      await expect(mariposa.request(notAdmin.address, parseUnits('5000001', 9))).to.be.revertedWith('ExceedsAllowance()');
 
       const requestEvent = await callAndReturnEvent(mariposa.request, [
-        notAdmin.address, parseUnits('1000000', 18)
+        notAdmin.address, parseUnits('1000000', 9)
       ]);
       validateEvent(requestEvent, 'Requested(address,address,uint256)', {
         _contract: admin.address,
         _recipient: notAdmin.address,
-        amount: parseUnits('1000000', 18)
+        amount: parseUnits('1000000', 9)
       });
 
-      expect(await btrfly.balanceOf(notAdmin.address)).to.equal(parseUnits('1000000', 18));
+      expect(await btrfly.balanceOf(notAdmin.address)).to.equal(parseUnits('1000000', 9));
     });
   });
 
