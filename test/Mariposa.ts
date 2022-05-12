@@ -64,6 +64,7 @@ describe('Mariposa', function () {
         _contract: admin.address,
         _amount: parseUnits('5000000', 9)
       });
+      expect(await mariposa.mintAllowances(admin.address)).to.equal(parseUnits('5000000', 9))
 
       await expect(mariposa.setAllowance(admin.address, parseUnits('5000000', 9))).to.be.revertedWith('NoChange');
     });
@@ -81,8 +82,15 @@ describe('Mariposa', function () {
         amount: parseUnits('1000000', 9)
       });
 
+      expect(await mariposa.emissions()).to.equal(parseUnits('1000000', 9))
+      expect(await mariposa.mintAllowances(admin.address)).to.equal(parseUnits('4000000', 9))
+
       expect(await btrfly.balanceOf(notAdmin.address)).to.equal(parseUnits('1000000', 9));
     });
+
+    it('Should revert if allowance amount is greater than supply cap', async function () {
+      await expect(mariposa.setAllowance(admin.address, parseUnits('1', 0))).to.be.revertedWith('ExceedsSupplyCap');
+    })
   });
 
 });

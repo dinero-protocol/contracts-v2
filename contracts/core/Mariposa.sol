@@ -42,11 +42,11 @@ contract Mariposa is Ownable {
     /*//////////////////////////////////////////////////////////////
                                  global variables
     //////////////////////////////////////////////////////////////*/
-    uint256 emissions;
-    uint256 totalAllowances;
-    bool isShutdown;
-    mapping(address => uint256) mintAllowances;
-    mapping(address => bool) isMinter;
+    uint256 public emissions;
+    uint256 public totalAllowances;
+    bool public isShutdown;
+    mapping(address => uint256) public mintAllowances;
+    mapping(address => bool) public isMinter;
     address[] public minters; // Push only, beware false-positives. Only for viewing.
 
     /*//////////////////////////////////////////////////////////////
@@ -107,7 +107,7 @@ contract Mariposa is Ownable {
         uint256 currentAllowance = mintAllowances[_contract];
 
         if (_amount == currentAllowance) revert NoChange();
-        if (totalAllowances + _amount > supplyCap) revert ExceedsSupplyCap();
+        if (emissions + totalAllowances + _amount > supplyCap) revert ExceedsSupplyCap();
 
         if (!isMinter[_contract]) {
             isMinter[_contract] = true;
