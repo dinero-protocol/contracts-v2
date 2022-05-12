@@ -31,12 +31,13 @@ contract Mariposa is Ownable {
         address indexed _recipient,
         uint256 amount
     );
+    event Shutdown();
 
     error ZeroAddress();
     error ZeroAmount();
     error ExceedsAllowance();
     error ExceedsSupplyCap();
-    error Shutdown();
+    error Closed();
     error NotMinter();
     error NoChange();
     
@@ -63,7 +64,7 @@ contract Mariposa is Ownable {
         // sanitize variables
         if (_recipient == address(0)) revert ZeroAddress();
         if (_amount == 0) revert ZeroAmount();
-        if (isShutdown) revert Shutdown();
+        if (isShutdown) revert Closed();
         if (!isMinter[msg.sender]) revert NotMinter();
         if (_amount > mintAllowances[msg.sender]) revert ExceedsAllowance();
         // may not be necessary as setAllowance checks this
@@ -111,6 +112,17 @@ contract Mariposa is Ownable {
 
         mintAllowances[_contract] = _amount;
         emit AllowanceSet(_contract, _amount);
+    }
+
+    /** 
+        @notice Emergency method to shutdown the current contract
+     */
+    function shutdown() external onlyOwner {
+        if (isShutdown) revert Closed();
+
+        isShutdown = true;
+
+        emit Shutdown();
     }
 
     /**

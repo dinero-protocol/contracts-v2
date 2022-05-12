@@ -71,6 +71,20 @@ describe('Mariposa', function () {
     it('Should revert if allowance amount is greater than supply cap', async function () {
       await expect(mariposa.setAllowance(admin.address, parseUnits('1', 0))).to.be.revertedWith('ExceedsSupplyCap');
     })
+
+    it('Should shutdown the contract and revert if request function is called.', async function () {
+      const shutdownEvent = await callAndReturnEvent(mariposa.shutdown, []);
+
+      validateEvent(shutdownEvent, 'Shutdown()', {});
+
+      await expect(mariposa.request(notAdmin.address, parseUnits('1000000', 9))).to.be.revertedWith(
+        'Closed()'
+      );
+    })
+
+    it('Should revert when called after shutdown', async function () {
+      await expect(mariposa.shutdown()).to.be.revertedWith('Closed()');
+    });
   });
 
 });
