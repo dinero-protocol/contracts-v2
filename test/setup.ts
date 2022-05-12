@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { impersonateAddressAndReturnSigner, toBN } from './helpers';
-const { parseUnits, parseEther } = ethers.utils;
+const { parseUnits } = ethers.utils;
 
 let admin: SignerWithAddress;
 let notAdmin: SignerWithAddress;

@@ -16,14 +16,13 @@
 */
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   callAndReturnEvent,
   validateEvent,
   ADDRESS_ZERO
 } from './helpers';
-import { BTRFLY, RLBTRFLY, Mariposa } from '../typechain';
+import { BTRFLY, Mariposa } from '../typechain';
 const { parseUnits } = ethers.utils;
 
 
