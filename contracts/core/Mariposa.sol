@@ -31,15 +31,19 @@ contract Mariposa is Ownable {
         address indexed _recipient,
         uint256 amount
     );
+    event AddedMinter(address indexed _minter);
+    event IncreasedAllowance(address indexed _contract, uint256 _amount);
+    event DecreasedAllowance(address indexed _contract, uint256 _amount);
     event Shutdown();
 
     error ZeroAddress();
     error ZeroAmount();
     error ExceedsAllowance();
+    error UnderflowAllowance();
     error ExceedsSupplyCap();
     error Closed();
     error NotMinter();
-    error NoChange();
+    error AlreadyAdded();
     
 
     /** 
@@ -55,17 +59,33 @@ contract Mariposa is Ownable {
         supplyCap = _supplyCap;
     }
 
+    modifier nonZeroAddress(address _user) {
+        if (_user == address(0)) revert ZeroAddress();
+        _;
+    }
+
+    modifier nonZeroAmount(uint256 _amount) {
+        if (_amount == 0) revert ZeroAmount();
+        _;
+    }
+
+    modifier onlyMinter() {
+        if (!isMinter[msg.sender]) revert NotMinter();
+        _;
+    }
+
     /** 
         @notice Mints tokens to recipient 
         @param  _recipient  address  To recieve minted tokens
         @param _amount      uint256  Amount
      */
-    function request(address _recipient, uint256 _amount) external {
-        // sanitize variables
-        if (_recipient == address(0)) revert ZeroAddress();
-        if (_amount == 0) revert ZeroAmount();
+    function request(address _recipient, uint256 _amount) 
+        external
+        onlyMinter
+        nonZeroAddress(_recipient)
+        nonZeroAmount(_amount)
+    {
         if (isShutdown) revert Closed();
-        if (!isMinter[msg.sender]) revert NotMinter();
         if (_amount > mintAllowances[msg.sender]) revert ExceedsAllowance();
         // may not be necessary as setAllowance checks this
         emissions += _amount;
@@ -79,39 +99,59 @@ contract Mariposa is Ownable {
     }
 
     /** 
-        @notice Sets allowances to addresses 
-        @param  _contract  address  Contract with minting rights
-        @param _amount     uint256  Amount
+        @notice Add address to minter role.
+        @param  _minter  address  Minter address
      */
-    function setAllowance(address _contract, uint256 _amount)
+    function addMinter(address _minter) external onlyOwner {
+        if (isMinter[_minter]) revert AlreadyAdded();
+
+        isMinter[_minter] = true;
+
+        minters.push(_minter);
+
+        emit AddedMinter(_minter);
+    }
+
+    /** 
+        @notice Increase allowance
+        @param  _contract  address  Contract with minting rights
+        @param _amount     uint256  Amount to decrease
+     */
+    function increaseAllowance(address _contract, uint256 _amount)
         external
         onlyOwner
+        onlyMinter
+        nonZeroAddress(_contract)
+        nonZeroAmount(_amount)
     {
-        // sanitize variables
-        if (_amount == 0) revert ZeroAmount();
-        if (_contract == address(0)) revert ZeroAddress();
+        if (emissions + totalAllowances + _amount > supplyCap)
+            revert ExceedsSupplyCap();
+    
+        totalAllowances += _amount;
+        mintAllowances[_contract] += _amount;
 
-        uint256 currentAllowance = mintAllowances[_contract];
+        emit IncreasedAllowance(_contract, _amount);
+    }
 
-        if (_amount == currentAllowance) revert NoChange();
-        if (emissions + totalAllowances + _amount > supplyCap) revert ExceedsSupplyCap();
+    /** 
+        @notice Decrease allowance
+        @param  _contract  address  Contract with minting rights
+        @param _amount     uint256  Amount to decrease
+     */
+    function decreaseAllowance(address _contract, uint256 _amount)
+        external
+        onlyOwner
+        onlyMinter
+        nonZeroAddress(_contract)
+        nonZeroAmount(_amount)
+    {
+        if (emissions + totalAllowances < _amount)
+            revert UnderflowAllowance();
 
-        if (!isMinter[_contract]) {
-            isMinter[_contract] = true;
-            minters.push(_contract);
-        }
-        
-        
-        if (_amount > currentAllowance)
-            // increasing allowances from 0 or positive integer
-            increaseAllowance(_amount - currentAllowance);
-            
-        else
-            // decreasing total allowances from non 0 and > currentAllowance integer
-            decreaseAllowance(currentAllowance - _amount);
+        totalAllowances -= _amount;
+        mintAllowances[_contract] -= _amount;
 
-        mintAllowances[_contract] = _amount;
-        emit AllowanceSet(_contract, _amount);
+        emit DecreasedAllowance(_contract, _amount);
     }
 
     /** 
@@ -123,21 +163,5 @@ contract Mariposa is Ownable {
         isShutdown = true;
 
         emit Shutdown();
-    }
-
-    /**
-        @notice Increase allowance
-        @param _amount  uint256  Amount to be increased
-     */
-    function increaseAllowance(uint _amount) internal {
-        totalAllowances += _amount;
-    }
-
-    /**
-        @notice Decrease allowance
-        @param _amount  uint256  Amount to be decreased
-     */
-    function decreaseAllowance(uint _amount) internal {
-        totalAllowances -= _amount;
     }
 }

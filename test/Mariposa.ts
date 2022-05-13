@@ -33,20 +33,25 @@ describe('Mariposa', function () {
   describe('request', function () {
     it('Should set allowance correctly', async function () {
       await expect(mariposa.request(notAdmin.address, parseUnits('1', 9))).to.be.revertedWith('NotMinter()');
-      await expect(mariposa.setAllowance(admin.address, parseUnits('0', 9))).to.be.revertedWith('ZeroAmount()');
-      await expect(mariposa.setAllowance(ADDRESS_ZERO, parseUnits('1', 9))).to.be.revertedWith('ZeroAddress()');
-      await expect(mariposa.setAllowance(admin.address, parseUnits('5000001', 9))).to.be.revertedWith('ExceedsSupplyCap()');
+      const minterEvent = await callAndReturnEvent(mariposa.addMinter, [
+        admin.address
+      ]);
+      validateEvent(minterEvent, 'AddedMinter(address)', {
+        _minter: admin.address,
+      });
+      await mariposa.addMinter(notAdmin.address);
+      await expect(mariposa.increaseAllowance(admin.address, '0')).to.be.revertedWith('ZeroAmount()');
+      await expect(mariposa.increaseAllowance(ADDRESS_ZERO, parseUnits('1', 9))).to.be.revertedWith('ZeroAddress()');
+      await expect(mariposa.increaseAllowance(admin.address, parseUnits('5000001', 9))).to.be.revertedWith('ExceedsSupplyCap()');
       
-      const allowanceEvent = await callAndReturnEvent(mariposa.setAllowance, [
+      const allowanceEvent = await callAndReturnEvent(mariposa.increaseAllowance, [
         admin.address, parseUnits('5000000', 9)
       ]);
-      validateEvent(allowanceEvent, 'AllowanceSet(address,uint256)', {
+      validateEvent(allowanceEvent, 'IncreasedAllowance(address,uint256)', {
         _contract: admin.address,
         _amount: parseUnits('5000000', 9)
       });
       expect(await mariposa.mintAllowances(admin.address)).to.equal(parseUnits('5000000', 9))
-
-      await expect(mariposa.setAllowance(admin.address, parseUnits('5000000', 9))).to.be.revertedWith('NoChange');
     });
 
     it('Should minter minting tokens to recipient', async function () {
@@ -68,13 +73,21 @@ describe('Mariposa', function () {
       expect(await btrfly.balanceOf(notAdmin.address)).to.equal(parseUnits('1000000', 9));
     });
 
-    it('Should revert if allowance amount is greater than supply cap', async function () {
-      await expect(mariposa.setAllowance(admin.address, parseUnits('1', 0))).to.be.revertedWith('ExceedsSupplyCap');
+    it('Should decrease allowance correctly.', async function () {
+      await expect(mariposa.decreaseAllowance(admin.address, '0')).to.be.revertedWith('ZeroAmount()');
+      await expect(mariposa.decreaseAllowance(ADDRESS_ZERO, parseUnits('1', 9))).to.be.revertedWith('ZeroAddress()');
+      await expect(mariposa.decreaseAllowance(admin.address, parseUnits('5000001', 9))).to.be.revertedWith('UnderflowAllowance()');
+      const allowanceEvent = await callAndReturnEvent(mariposa.decreaseAllowance, [
+        admin.address, parseUnits('4000000', 9)
+      ]);
+      validateEvent(allowanceEvent, 'DecreasedAllowance(address,uint256)', {
+        _contract: admin.address,
+        _amount: parseUnits('4000000', 9)
+      });
+      expect(await mariposa.mintAllowances(admin.address)).to.equal('0')
     })
-
     it('Should shutdown the contract and revert if request function is called.', async function () {
       const shutdownEvent = await callAndReturnEvent(mariposa.shutdown, []);
-
       validateEvent(shutdownEvent, 'Shutdown()', {});
 
       await expect(mariposa.request(notAdmin.address, parseUnits('1000000', 9))).to.be.revertedWith(
