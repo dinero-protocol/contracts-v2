@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
+import {IBTRFLY} from "../interfaces/IBTRFLY.sol";
+
 /// @title Mock MARIPOSA
 /// @author RealKinando
 
 /// @notice Stand-in mock to simplify unit testing of the XBond contract
-
-interface IBTRFLY {
-    function mint(address account_, uint256 amount_) external;
-}
 
 contract MockMariposa{
     /*//////////////////////////////////////////////////////////////
@@ -25,11 +23,11 @@ contract MockMariposa{
     }
 
     function setAllowance(uint256 amount) external {
-        allowance = amount
+        allowance = amount;
     }
 
     function request(address _recipient, uint256 amount) external {
-        if (amount > allowance) revert ExceedsAllowance()
+        if (amount > allowance) revert ExceedsAllowance();
         IBTRFLY(btrfly).mint(_recipient, amount);
     }
 

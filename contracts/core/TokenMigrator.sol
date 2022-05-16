@@ -29,6 +29,14 @@ contract TokenMigrator{
     error ZeroAddress();
     error ZeroAmount();
 
+    /**
+        @param wxbtrfly_    address     wxbtrfly token address
+        @param xbtrfly_     address     xbtrfly token address
+        @param btrfly_      address     btrfly token address
+        @param mariposa_    address     mariposa contract address
+        @param staking_     address     staking contract address
+     */
+
     constructor(
         address wxbtrfly_,
         address xbtrfly_,
@@ -48,6 +56,10 @@ contract TokenMigrator{
         staking     = IStaking(staking_);
     }
 
+    /**
+        @param recipient_      address     address that will receive the minted BTRFLYV2
+        @param amount_          uint256     amount of BTRFLYV1 tokens to convert into BTRFLYV2     
+     */
     function fromBTRFLY(address recipient_, uint256 amount_) external{
         //calculate wx value
         uint256 value = wxbtrfly.wBTRFLYValue(amount_);
@@ -57,6 +69,10 @@ contract TokenMigrator{
         mariposa.request( recipient_, value);
     }
 
+    /**
+        @param recipient_      address     address that will receive the minted BTRFLYV2
+        @param amount_          uint256     amount of XBTRFLY tokens to convert into BTRFLYV2     
+     */
     function fromXBTRFLY(address recipient_, uint256 amount_) external{
         //calculate wx value
         uint256 value = wxbtrfly.wBTRFLYValue(amount_);
@@ -70,6 +86,10 @@ contract TokenMigrator{
         mariposa.request(recipient_, value);
     }
 
+    /**
+        @param recipient_      address     address that will receive the minted BTRFLYV2
+        @param amount_          uint256     amount of WXBTRFLY tokens to convert into BTRFLYV2     
+     */
     function fromWXBTRFLY(address recipient_, uint256 amount_) external{
         //receive tokens
         wxbtrfly.transferFrom(msg.sender,address(this),amount_);
