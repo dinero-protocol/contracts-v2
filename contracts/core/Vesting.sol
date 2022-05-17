@@ -22,7 +22,7 @@ contract Vesting is Ownable {
     mapping (address => mapping(uint256 => bool)) public isMinted;
 
     event Minted(address indexed _user, uint256 indexed _quarter, uint256 _amount);
-    event RemovedBasisPoint(address _user);
+    event RemovedBasisPoint(address _user, uint256 _unallocBasisPoint);
     event AssignedBasisPoint(address _user, uint32 _basePoint);
     event UpdatedTokensUnlocking(uint256 _quarter, uint256 _tokensUnlocking);
 
@@ -61,7 +61,7 @@ contract Vesting is Ownable {
     {
         require(_quarter > 0 && _quarter < block.timestamp, "Vesting: can not mint");
         require(isMinted[msg.sender][_quarter] == false, "Vesting: already minted");
-        uint256 mintAmount = tokensUnlocking[_quarter] * basisPoints[msg.sender];
+        uint256 mintAmount = tokensUnlocking[_quarter] * basisPoints[msg.sender] / 1e8;
         isMinted[msg.sender][_quarter] = true;
         mariposa.request(msg.sender, mintAmount);
         emit Minted(msg.sender, _quarter, mintAmount);
@@ -74,7 +74,7 @@ contract Vesting is Ownable {
     function removeBasisPoint(address _user) external onlyOwner {
         basisPoints[address(this)] += basisPoints[_user];
         basisPoints[_user] = 0;
-        emit RemovedBasisPoint(_user);
+        emit RemovedBasisPoint(_user, basisPoints[address(this)]);
     }
 
     /** 
@@ -85,7 +85,7 @@ contract Vesting is Ownable {
     function assignBasisPoint(address _user, uint32 _basisPoint) external onlyOwner {
         uint32 prevBasisPoint = basisPoints[_user];
         uint32 unAllocBasisPoint = getUnallocBasisPoint();
-        require(unAllocBasisPoint + prevBasisPoint - _basisPoint >= 0, "Vesting: basis point overflow");
+        require(unAllocBasisPoint + prevBasisPoint >= _basisPoint, "Vesting: basis point overflow");
         basisPoints[_user] = _basisPoint;
         basisPoints[address(this)] = unAllocBasisPoint + prevBasisPoint - _basisPoint;
         emit AssignedBasisPoint(_user, _basisPoint);
