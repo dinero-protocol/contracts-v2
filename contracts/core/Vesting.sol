@@ -22,10 +22,10 @@ contract Vesting is Ownable {
     mapping (address => mapping(uint => bool)) public isMinted;
 
     event Minted(address indexed _user, uint indexed _quarter, uint _amount);
-    event RemovedAlloc(address _user);
-    event AssignedAlloc(address _user, uint32 _basePoint);
+    event RemovedBasisPoint(address _user);
+    event AssignedBasisPoint(address _user, uint32 _basePoint);
     event UpdatedTokensUnlocking(uint _quarter, uint _tokensUnlocking);
-    
+
     /** 
         @notice Contructor
         @param  _ownerships  address[] Address array of ownership
@@ -71,10 +71,10 @@ contract Vesting is Ownable {
         @notice Remove basis point of user
         @param  _user  uint256 Address to be removed
      */
-    function removeAlloc(address _user) external onlyOwner {
+    function removeBasisPoint(address _user) external onlyOwner {
         basisPoints[address(this)] += basisPoints[_user];
         basisPoints[_user] = 0;
-        emit RemovedAlloc(_user);
+        emit RemovedBasisPoint(_user);
     }
 
     /** 
@@ -82,13 +82,13 @@ contract Vesting is Ownable {
         @param  _user  uint256 Address to be assigned
         @param  _basisPoint  uint256 Basis point
      */
-    function assignAlloc(address _user, uint32 _basisPoint) external onlyOwner {
-        uint32 prevAlloc = basisPoints[_user];
-        uint32 unAlloc = getUnalloc();
-        require(unAlloc + prevAlloc - _basisPoint >= 0, "Vesting: basis point overflow");
+    function assignBasisPoint(address _user, uint32 _basisPoint) external onlyOwner {
+        uint32 prevBasisPoint = basisPoints[_user];
+        uint32 unAllocBasisPoint = getUnallocBasisPoint();
+        require(unAllocBasisPoint + prevBasisPoint - _basisPoint >= 0, "Vesting: basis point overflow");
         basisPoints[_user] = _basisPoint;
-        basisPoints[address(this)] = unAlloc + prevAlloc - _basisPoint;
-        emit AssignedAlloc(_user, _basisPoint);
+        basisPoints[address(this)] = unAllocBasisPoint + prevBasisPoint - _basisPoint;
+        emit AssignedBasisPoint(_user, _basisPoint);
     }
 
     /** 
@@ -105,7 +105,7 @@ contract Vesting is Ownable {
     /** 
         @notice Get Unalloc point 
      */
-    function getUnalloc() public view returns (uint32) {
+    function getUnallocBasisPoint() public view returns (uint32) {
         return basisPoints[address(this)];
     }
 }
