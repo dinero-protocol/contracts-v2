@@ -17,7 +17,7 @@ contract Vesting is Ownable {
     // Basis points of address, times by 1e6. Ex: 1e6 = 1%, 1e8 = 100%
     mapping (address => uint32) public basisPoints;
     // Token percent to be minted in specific quarter
-    mapping (uint => uint) public tokensUnlocking;
+    mapping (uint256 => uint256) public tokensUnlocking;
     // Check the tokens of specific quarter is minted.
     mapping (address => mapping(uint => bool)) public isMinted;
 
@@ -59,7 +59,7 @@ contract Vesting is Ownable {
     function mint(uint _quarter) 
         external
     {
-        require(_quarter > 0 &&_quarter < block.timestamp, "Vesting: can not mint");
+        require(_quarter > 0 && _quarter < block.timestamp, "Vesting: can not mint");
         require(isMinted[msg.sender][_quarter] == false, "Vesting: already minted");
         uint mintAmount = tokensUnlocking[_quarter] * basisPoints[msg.sender];
         isMinted[msg.sender][_quarter] = true;
