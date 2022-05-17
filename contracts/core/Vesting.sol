@@ -14,42 +14,42 @@ import "./interfaces/IMariposa.sol";
 
 contract Vesting is Ownable {
     IMariposa public mariposa;
-    // Basis token amount of address
-    mapping (address => uint) public basisPoint;
+    // Basis points of address, times by 1e6. Ex: 1e6 = 1%, 1e8 = 100%
+    mapping (address => uint) public basisPoints;
     // Token percent to be minted in specific quarter
-    mapping (uint => uint) public tokensEmitted;
+    mapping (uint => uint) public tokensUnlocking;
     // Check the tokens of specific quarter is minted.
-    mapping (address => mapping(uint => bool)) isMinted;
+    mapping (address => mapping(uint => bool)) public isMinted;
 
     event Minted(address indexed _user, uint indexed _quarter, uint _amount);
 
     /** 
         @notice Contructor
      */
-    constructor(address _mariposa, address[] memory _ownership, uint[] memory _basisPoint, uint[] memory _quarter, uint[] memory _percentage) {
+    constructor(address _mariposa, address[] memory _ownerships, uint[] memory _basisPoints, uint[] memory _quarters, uint[] memory _tokensUnlocking) {
         mariposa = IMariposa(_mariposa);
-        uint ownershipLen = _ownership.length;
-        require(ownershipLen == _basisPoint.length, "Vesting: length error");
+        uint ownershipsLen = _ownerships.length;
+        require(ownershipsLen == _basisPoints.length, "Vesting: length error");
 
-        uint quarterLen = _quarter.length;
-        require(quarterLen == _percentage.length, "Vesting: length error");
-        for (uint i; i < ownershipLen; i ++)
-            basisPoint[_ownership[i]] = _basisPoint[i];
+        uint quartersLen = _quarters.length;
+        require(quartersLen == _tokensUnlocking.length, "Vesting: length error");
+        for (uint i; i < ownershipsLen; i ++)
+            basisPoints[_ownerships[i]] = _basisPoints[i];
         
-        for (uint i; i < quarterLen;i ++)
-            tokensEmitted[_quarter[i]] = _percentage[i];
-        
+        for (uint i; i < quartersLen;i ++)
+            tokensUnlocking[_quarters[i]] = _tokensUnlocking[i];
     }
 
     /** 
         @notice Mints tokens to recipient 
-        @param  _quarter  uint256 quarter
+        @param  _quarter  uint256 Timestamp to mint
      */
     function mint(uint _quarter) 
         external
     {
+        require(_quarter < block.timestamp, "Vesting: can not mint");
         require(isMinted[msg.sender][_quarter] == false, "Vesting: already minted");
-        uint mintAmount = basisPoint[msg.sender] * tokensEmitted[_quarter];
+        uint mintAmount = tokensUnlocking[_quarter] * basisPoints[msg.sender];
         mariposa.request(msg.sender, mintAmount);
         isMinted[msg.sender][_quarter] = true;
         emit Minted(msg.sender, _quarter, mintAmount);
