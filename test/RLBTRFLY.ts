@@ -158,12 +158,8 @@ describe('RLBTRFLY', function () {
       expect(btrflyBalanceAfter).to.equal(btrflyBalanceBefore.sub(lockAmount));
       expect(lockedBalanceAfter).to.equal(lockedBalanceBefore.add(lockAmount));
 
-      const {
-        total,
-        unlockable,
-        locked,
-        lockData,
-      } = await rlBtrfly.lockedBalances(account);
+      const { total, unlockable, locked, lockData } =
+        await rlBtrfly.lockedBalances(account);
 
       expect(total).to.equal(lockAmount);
       expect(unlockable).to.equal(0);
@@ -287,10 +283,8 @@ describe('RLBTRFLY', function () {
 
     it('Should properly relock after creating a new lock', async function () {
       const account = admin.address;
-      const {
-        total: totalBefore,
-        lockData: lockDataBefore,
-      } = await rlBtrfly.lockedBalances(account);
+      const { total: totalBefore, lockData: lockDataBefore } =
+        await rlBtrfly.lockedBalances(account);
       const { amount: relockAmount, unlockTime } = lockDataBefore[0];
       const btrflyBalanceBefore = await btrfly.balanceOf(account);
       const { timestamp } = await ethers.provider.getBlock('latest');
@@ -327,10 +321,8 @@ describe('RLBTRFLY', function () {
 
       // Assert the order of the locks
       // The last lock should consists of both the relock and the new lock
-      const {
-        total: totalAfter,
-        lockData: lockDataAfter,
-      } = await rlBtrfly.lockedBalances(account);
+      const { total: totalAfter, lockData: lockDataAfter } =
+        await rlBtrfly.lockedBalances(account);
       const btrflyBalanceAfter = await btrfly.balanceOf(account);
       const lastLock = lockDataAfter[lockDataAfter.length - 1];
       const expectedUnlockForNewLock = epoch.add(lockDuration);
@@ -348,12 +340,8 @@ describe('RLBTRFLY', function () {
   describe('lockedBalances', function () {
     it('Should return correct balance data an account', async function () {
       const account = admin.address;
-      const {
-        total,
-        locked,
-        unlockable,
-        lockData,
-      } = await rlBtrfly.lockedBalances(account);
+      const { total, locked, unlockable, lockData } =
+        await rlBtrfly.lockedBalances(account);
       const { timestamp } = await ethers.provider.getBlock('latest');
       const epoch = toBN(timestamp).div(week).mul(week);
 
@@ -514,10 +502,8 @@ describe('RLBTRFLY', function () {
       await increaseBlockTimestamp(Number(toBN(unlockTime).sub(timestamp)));
 
       // Assert the unlocked amount and active locked token balance
-      const {
-        locked,
-        unlockable: unlockableMid,
-      } = await rlBtrfly.lockedBalances(account);
+      const { locked, unlockable: unlockableMid } =
+        await rlBtrfly.lockedBalances(account);
       const activeBalance = await rlBtrfly.balanceOf(account);
       const pendingLock = await rlBtrfly.pendingLockOf(account);
 
@@ -605,10 +591,8 @@ describe('RLBTRFLY', function () {
 
       const btrflyBalanceAfter = await btrfly.balanceOf(account);
       const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(account);
-      const {
-        locked: lockedAfter,
-        unlockable: unlockableAfter,
-      } = await rlBtrfly.lockedBalances(account);
+      const { locked: lockedAfter, unlockable: unlockableAfter } =
+        await rlBtrfly.lockedBalances(account);
 
       expect(btrflyBalanceAfter).to.equal(btrflyBalanceBefore);
       expect(lockedBalanceAfter).to.equal(lockedBalanceBefore);

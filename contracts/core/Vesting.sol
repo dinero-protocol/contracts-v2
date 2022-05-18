@@ -15,13 +15,17 @@ import "./interfaces/IMariposa.sol";
 contract Vesting is Ownable {
     IMariposa public mariposa;
     // Basis points of address, times by 1e6. Ex: 1e6 = 1%, 1e8 = 100%
-    mapping (address => uint32) public basisPoints;
+    mapping(address => uint32) public basisPoints;
     // Token percent to be minted in specific quarter
-    mapping (uint256 => uint256) public tokensUnlocking;
+    mapping(uint256 => uint256) public tokensUnlocking;
     // Check the tokens of specific quarter is minted.
-    mapping (address => mapping(uint256 => bool)) public isMinted;
+    mapping(address => mapping(uint256 => bool)) public isMinted;
 
-    event Minted(address indexed _user, uint256 indexed _quarter, uint256 _amount);
+    event Minted(
+        address indexed _user,
+        uint256 indexed _quarter,
+        uint256 _amount
+    );
     event RemovedBasisPoint(address _user, uint256 _unallocBasisPoint);
     event AssignedBasisPoint(address _user, uint32 _basePoint);
     event UpdatedTokensUnlocking(uint256 _quarter, uint256 _tokensUnlocking);
@@ -33,22 +37,31 @@ contract Vesting is Ownable {
         @param  _quarters  uint256[] Quarter timestamp array
         @param  _tokensUnlocking  uint32[] Tokens to be unlocked
      */
-    constructor(address _mariposa, address[] memory _ownerships, uint32[] memory _basisPoints, uint256[] memory _quarters, uint256[] memory _tokensUnlocking) {
+    constructor(
+        address _mariposa,
+        address[] memory _ownerships,
+        uint32[] memory _basisPoints,
+        uint256[] memory _quarters,
+        uint256[] memory _tokensUnlocking
+    ) {
         mariposa = IMariposa(_mariposa);
         uint256 ownershipsLen = _ownerships.length;
         require(ownershipsLen == _basisPoints.length, "Vesting: length error");
 
         uint256 quartersLen = _quarters.length;
-        require(quartersLen == _tokensUnlocking.length, "Vesting: length error");
+        require(
+            quartersLen == _tokensUnlocking.length,
+            "Vesting: length error"
+        );
         uint32 basePointsSum;
-        for (uint256 i; i < ownershipsLen; i ++) {
+        for (uint256 i; i < ownershipsLen; i++) {
             basisPoints[_ownerships[i]] = _basisPoints[i];
             basePointsSum += _basisPoints[i];
         }
-        
+
         require(basePointsSum == 1e8, "Vesting: checksum error");
 
-        for (uint256 i; i < quartersLen;i ++)
+        for (uint256 i; i < quartersLen; i++)
             tokensUnlocking[_quarters[i]] = _tokensUnlocking[i];
     }
 
@@ -56,12 +69,17 @@ contract Vesting is Ownable {
         @notice Mints tokens to recipient 
         @param  _quarter  uint256 Quarter timestamp to mint
      */
-    function mint(uint256 _quarter) 
-        external
-    {
-        require(_quarter > 0 && _quarter < block.timestamp, "Vesting: can not mint");
-        require(isMinted[msg.sender][_quarter] == false, "Vesting: already minted");
-        uint256 mintAmount = tokensUnlocking[_quarter] * basisPoints[msg.sender] / 1e8;
+    function mint(uint256 _quarter) external {
+        require(
+            _quarter > 0 && _quarter < block.timestamp,
+            "Vesting: can not mint"
+        );
+        require(
+            isMinted[msg.sender][_quarter] == false,
+            "Vesting: already minted"
+        );
+        uint256 mintAmount = (tokensUnlocking[_quarter] *
+            basisPoints[msg.sender]) / 1e8;
         isMinted[msg.sender][_quarter] = true;
         mariposa.request(msg.sender, mintAmount);
         emit Minted(msg.sender, _quarter, mintAmount);
@@ -82,12 +100,21 @@ contract Vesting is Ownable {
         @param  _user  uint256 Address to be assigned
         @param  _basisPoint  uint256 Basis point
      */
-    function assignBasisPoint(address _user, uint32 _basisPoint) external onlyOwner {
+    function assignBasisPoint(address _user, uint32 _basisPoint)
+        external
+        onlyOwner
+    {
         uint32 prevBasisPoint = basisPoints[_user];
         uint32 unAllocBasisPoint = getUnallocBasisPoint();
-        require(unAllocBasisPoint + prevBasisPoint >= _basisPoint, "Vesting: basis point overflow");
+        require(
+            unAllocBasisPoint + prevBasisPoint >= _basisPoint,
+            "Vesting: basis point overflow"
+        );
         basisPoints[_user] = _basisPoint;
-        basisPoints[address(this)] = unAllocBasisPoint + prevBasisPoint - _basisPoint;
+        basisPoints[address(this)] =
+            unAllocBasisPoint +
+            prevBasisPoint -
+            _basisPoint;
         emit AssignedBasisPoint(_user, _basisPoint);
     }
 
@@ -96,7 +123,10 @@ contract Vesting is Ownable {
         @param  _quarter  uint256 Quarter timestamp 
         @param  _tokensUnlocking  uint256 Tokens to be unlocked
      */
-    function updateTokensUnlocking(uint256 _quarter, uint256 _tokensUnlocking) external onlyOwner {
+    function updateTokensUnlocking(uint256 _quarter, uint256 _tokensUnlocking)
+        external
+        onlyOwner
+    {
         require(_quarter > 0, "Vesting: zero quarter");
         tokensUnlocking[_quarter] = _tokensUnlocking;
         emit UpdatedTokensUnlocking(_quarter, _tokensUnlocking);
@@ -109,4 +139,3 @@ contract Vesting is Ownable {
         return basisPoints[address(this)];
     }
 }
-

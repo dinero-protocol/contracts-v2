@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.12;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title Mariposa
 /// @author never
@@ -44,7 +44,6 @@ contract Mariposa is Ownable {
     error Closed();
     error NotMinter();
     error AlreadyAdded();
-    
 
     /** 
         @notice Contructor
@@ -79,7 +78,7 @@ contract Mariposa is Ownable {
         @param  _recipient  address  To recieve minted tokens
         @param _amount      uint256  Amount
      */
-    function request(address _recipient, uint256 _amount) 
+    function request(address _recipient, uint256 _amount)
         external
         onlyMinter
         nonZeroAddress(_recipient)
@@ -91,7 +90,7 @@ contract Mariposa is Ownable {
         emissions += _amount;
         if (emissions > supplyCap) revert ExceedsSupplyCap();
         mintAllowances[msg.sender] -= _amount;
-        
+
         totalAllowances -= _amount;
 
         btrfly.mint(_recipient, _amount);
@@ -126,7 +125,7 @@ contract Mariposa is Ownable {
     {
         if (emissions + totalAllowances + _amount > supplyCap)
             revert ExceedsSupplyCap();
-    
+
         totalAllowances += _amount;
         mintAllowances[_contract] += _amount;
 
@@ -145,8 +144,7 @@ contract Mariposa is Ownable {
         nonZeroAddress(_contract)
         nonZeroAmount(_amount)
     {
-        if (emissions + totalAllowances < _amount)
-            revert UnderflowAllowance();
+        if (emissions + totalAllowances < _amount) revert UnderflowAllowance();
 
         totalAllowances -= _amount;
         mintAllowances[_contract] -= _amount;

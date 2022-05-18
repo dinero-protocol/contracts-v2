@@ -22,7 +22,7 @@ jobs:
             - ./node_modules
       - persist_to_workspace:
           paths:
-              - node_modules
+            - node_modules
           root: .
       - run:
           name: clean-and-compile
@@ -44,10 +44,10 @@ jobs:
       - run:
           name: slither-analysis
           command: |
-              set +e
-              python -m slither . --solc-disable-warnings --json slither-analysis.json
-              python -m slither . --solc-disable-warnings --print human-summary,contract-summary
-              exit 0
+            set +e
+            python -m slither . --solc-disable-warnings --json slither-analysis.json
+            python -m slither . --solc-disable-warnings --print human-summary,contract-summary
+            exit 0
       - store_artifacts:
           path: slither-analysis.json
           destination: artifacts
