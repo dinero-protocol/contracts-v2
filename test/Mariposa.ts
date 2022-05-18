@@ -86,18 +86,18 @@ describe('Mariposa', function () {
       });
       expect(await mariposa.mintAllowances(admin.address)).to.equal('0')
     })
-    it('Should shutdown the contract and revert if request function is called.', async function () {
-      const shutdownEvent = await callAndReturnEvent(mariposa.shutdown, []);
-      validateEvent(shutdownEvent, 'Shutdown()', {});
+    // it('Should shutdown the contract and revert if request function is called.', async function () {
+    //   const shutdownEvent = await callAndReturnEvent(mariposa.shutdown, []);
+    //   validateEvent(shutdownEvent, 'Shutdown()', {});
 
-      await expect(mariposa.request(notAdmin.address, parseUnits('1000000', 9))).to.be.revertedWith(
-        'Closed()'
-      );
-    })
+    //   await expect(mariposa.request(notAdmin.address, parseUnits('1000000', 9))).to.be.revertedWith(
+    //     'Closed()'
+    //   );
+    // })
 
-    it('Should revert when called after shutdown', async function () {
-      await expect(mariposa.shutdown()).to.be.revertedWith('Closed()');
-    });
+    // it('Should revert when called after shutdown', async function () {
+    //   await expect(mariposa.shutdown()).to.be.revertedWith('Closed()');
+    // });
   });
 
 });

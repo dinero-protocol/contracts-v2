@@ -81,4 +81,9 @@ export const randomNumberBetweenRange = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1) + min);
 };
 
+export const getCurrentTime = async (): Promise<number> => {
+  const block = await ethers.provider.getBlock("latest");
+  return block.timestamp;
+}
+
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
