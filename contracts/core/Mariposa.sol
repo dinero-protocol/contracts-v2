@@ -119,7 +119,6 @@ contract Mariposa is Ownable {
     function increaseAllowance(address _contract, uint256 _amount)
         external
         onlyOwner
-        onlyMinter
         nonZeroAddress(_contract)
         nonZeroAmount(_amount)
     {
@@ -140,7 +139,6 @@ contract Mariposa is Ownable {
     function decreaseAllowance(address _contract, uint256 _amount)
         external
         onlyOwner
-        onlyMinter
         nonZeroAddress(_contract)
         nonZeroAmount(_amount)
     {
