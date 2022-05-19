@@ -5,6 +5,7 @@ import {
   impersonateAddressAndReturnSigner,
   toBN,
 } from './helpers';
+import { BTRFLY, Mariposa, RLBTRFLY, Vesting } from '../typechain';
 const { parseUnits } = ethers.utils;
 
 let admin: SignerWithAddress;
@@ -23,29 +24,32 @@ before(async function () {
   [admin, notAdmin, multisig, alice, bob, carol] = await ethers.getSigners();
 
   multisig = await impersonateAddressAndReturnSigner(admin, multisigAddress);
-  const btrfly = await ethers.getContractAt('BTRFLY', btrflyAddress);
-  const rlBtrfly = await (
+  const btrfly = (await ethers.getContractAt(
+    'BTRFLY',
+    btrflyAddress
+  )) as BTRFLY;
+  const rlBtrfly = (await (
     await ethers.getContractFactory('RLBTRFLY')
-  ).deploy(btrfly.address);
+  ).deploy(btrfly.address)) as RLBTRFLY;
 
-  const mariposa = await (
+  const mariposa = (await (
     await ethers.getContractFactory('Mariposa')
-  ).deploy(btrfly.address, mariposaCap);
+  ).deploy(btrfly.address, mariposaCap)) as Mariposa;
 
   const ownerships = [alice.address, bob.address, carol.address];
   const basisPoints = [30 * 1e6, 30 * 1e6, 40 * 1e6];
   const currentTime = await getCurrentTime();
   const quarters = [
-    currentTime,
+    currentTime + 1,
     currentTime + 300 * 86400,
     currentTime + 2 * 300 * 86400,
   ];
   const tokensUnlocking = [
-    parseUnits('10000', 9),
-    parseUnits('20000', 9),
-    parseUnits('30000', 9),
+    parseUnits('10000', await btrfly.decimals()),
+    parseUnits('20000', await btrfly.decimals()),
+    parseUnits('30000', await btrfly.decimals()),
   ];
-  const vesting = await (
+  const vesting = (await (
     await ethers.getContractFactory('Vesting')
   ).deploy(
     mariposa.address,
@@ -53,7 +57,7 @@ before(async function () {
     basisPoints,
     quarters,
     tokensUnlocking
-  );
+  )) as Vesting;
 
   // Fund the admin address with some BTRFLY for testing purposes
   await btrfly.connect(multisig).transfer(admin.address, adminBtrflyBalance);

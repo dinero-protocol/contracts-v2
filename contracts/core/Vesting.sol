@@ -72,7 +72,7 @@ contract Vesting is Ownable {
     function mint(uint256 _quarter) external {
         require(
             _quarter > 0 && _quarter < block.timestamp,
-            "Vesting: can not mint"
+            "Vesting: quarter not vested"
         );
         require(
             isMinted[msg.sender][_quarter] == false,
