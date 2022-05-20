@@ -16,7 +16,7 @@ contract Vesting is Ownable {
     IMariposa public mariposa;
     // Basis points of address, times by 1e6. Ex: 1e6 = 1%, 1e8 = 100%
     mapping(address => uint32) public basisPoints;
-    // Token percent to be minted in specific quarter
+    // Tokens unlocking per epoch (timestamp -> tokens)
     mapping(uint256 => uint256) public tokensUnlocking;
     // Check the tokens of specific quarter is minted.
     mapping(address => mapping(uint256 => bool)) public isMinted;
@@ -133,7 +133,7 @@ contract Vesting is Ownable {
     }
 
     /** 
-        @notice Get Unalloc point 
+        @notice Get Unallocated point, allowance of address(this) 
      */
     function getUnallocBasisPoint() public view returns (uint32) {
         return basisPoints[address(this)];
