@@ -3,7 +3,7 @@ pragma solidity 0.8.12;
 
 import {IStaking} from "../interfaces/IStaking.sol";
 import {IWXBTRFLY} from "../interfaces/IWXBTRFLY.sol";
-import {IBTRFLY} from "../interfaces/IBTRFLY.sol";
+import {IBTRFLYV1} from "../interfaces/IBTRFLYV1.sol";
 import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
 import {IMariposa} from "../interfaces/IMariposa.sol";
 
@@ -22,7 +22,7 @@ contract TokenMigrator{
 
     IWXBTRFLY immutable public wxbtrfly;
     ERC20 immutable public xbtrfly;
-    IBTRFLY immutable public btrfly;
+    IBTRFLYV1 immutable public btrflyv1;
     IMariposa immutable public mariposa;
     IStaking immutable public staking;
 
@@ -32,7 +32,7 @@ contract TokenMigrator{
     /**
         @param wxbtrfly_    address     wxbtrfly token address
         @param xbtrfly_     address     xbtrfly token address
-        @param btrfly_      address     btrfly token address
+        @param btrflyv1_      address     btrfly token address
         @param mariposa_    address     mariposa contract address
         @param staking_     address     staking contract address
      */
@@ -40,20 +40,21 @@ contract TokenMigrator{
     constructor(
         address wxbtrfly_,
         address xbtrfly_,
-        address btrfly_,
+        address btrflyv1_,
         address mariposa_,
         address staking_
     ){
         if (wxbtrfly_ == address(0))    revert ZeroAddress();
         if (xbtrfly_ == address(0))     revert ZeroAddress();
-        if (btrfly_ == address(0))      revert ZeroAddress();
+        if (btrflyv1_ == address(0))      revert ZeroAddress();
         if (mariposa_ == address(0))    revert ZeroAddress();
         if (staking_ == address(0))     revert ZeroAddress();
         wxbtrfly    = IWXBTRFLY(wxbtrfly_);
         xbtrfly     = ERC20(xbtrfly_);
-        btrfly      = IBTRFLY(btrfly_);
+        btrflyv1      = IBTRFLYV1(btrflyv1_);
         mariposa    = IMariposa(mariposa_);
         staking     = IStaking(staking_);
+        xbtrfly.approve(staking_, 2**256 -1);
     }
 
     /**
@@ -64,7 +65,7 @@ contract TokenMigrator{
         //calculate wx value
         uint256 value = wxbtrfly.wBTRFLYValue(amount_);
         //burnFrom (calling burnFrom directly saves gas)
-        btrfly.burnFrom(msg.sender,amount_);
+        btrflyv1.burnFrom(msg.sender,amount_);
         //mint wxAmount via mariposa
         mariposa.request( recipient_, value);
     }
@@ -81,7 +82,7 @@ contract TokenMigrator{
         //unstake
         staking.unstake(amount_, false);
         //burn
-        btrfly.burn(amount_);
+        btrflyv1.burn(amount_);
         ///mint wxAmount via mariposa
         mariposa.request(recipient_, value);
     }
@@ -96,7 +97,7 @@ contract TokenMigrator{
         //unstake
         uint256 burnAmount = wxbtrfly.unwrapToBTRFLY(amount_);
         //burn
-        btrfly.burn(burnAmount);
+        btrflyv1.burn(burnAmount);
         ///mint wxAmount via mariposa
         mariposa.request( recipient_, amount_);
     }

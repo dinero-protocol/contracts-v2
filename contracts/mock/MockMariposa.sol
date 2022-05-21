@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
-import {IBTRFLY} from "../interfaces/IBTRFLY.sol";
+import {BTRFLYV2} from "../core/BTRFLYV2.sol";
 
 /// @title Mock MARIPOSA
 /// @author RealKinando
@@ -22,13 +22,8 @@ contract MockMariposa{
         btrfly = btrfly_;
     }
 
-    function setAllowance(uint256 amount) external {
-        allowance = amount;
-    }
-
     function request(address _recipient, uint256 amount) external {
-        if (amount > allowance) revert ExceedsAllowance();
-        IBTRFLY(btrfly).mint(_recipient, amount);
+        BTRFLYV2(btrfly).mint(_recipient, amount);
     }
 
 }
