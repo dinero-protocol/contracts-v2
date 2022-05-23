@@ -64,7 +64,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
 
     string public constant name = "Revenue-Locked BTRFLY";
     string public constant symbol = "rlBTRFLY";
-    uint8 public constant decimals = 9;
+    uint8 public constant decimals = 18;
 
     error ZeroAddress();
     error ZeroAmount();

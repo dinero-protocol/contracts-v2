@@ -7,23 +7,23 @@ import {
   callAndReturnEvents,
   validateEvent,
 } from './helpers';
-import { BTRFLY, RLBTRFLY } from '../typechain';
+import { BTRFLYV2, RLBTRFLY } from '../typechain';
 import { increaseBlockTimestamp, toBN } from './helpers';
 
 describe('RLBTRFLY', function () {
   let admin: SignerWithAddress;
   let notAdmin: SignerWithAddress;
-  let btrfly: BTRFLY;
+  let btrflyv2: BTRFLYV2;
   let rlBtrfly: RLBTRFLY;
 
   let lockDuration: BigNumber;
   let week: BigNumber;
 
   before(async function () {
-    ({ admin, notAdmin, btrfly, rlBtrfly } = this);
+    ({ admin, notAdmin, btrflyv2, rlBtrfly } = this);
 
     // Pre-approve for easier and shorter test run
-    await btrfly.approve(rlBtrfly.address, ethers.constants.MaxUint256);
+    await btrflyv2.approve(rlBtrfly.address, ethers.constants.MaxUint256);
   });
 
   describe('initial state', function () {
@@ -40,7 +40,7 @@ describe('RLBTRFLY', function () {
 
       expect(name).to.equal('Revenue-Locked BTRFLY');
       expect(symbol).to.equal('rlBTRFLY');
-      expect(decimals).to.equal(9);
+      expect(decimals).to.equal(18);
       expect(week).to.equal(weekInSeconds);
       expect(lockDuration).to.equal(lockDurInSeconds);
       expect(totalSupply).to.equal(0);
@@ -53,7 +53,7 @@ describe('RLBTRFLY', function () {
       const epochCount = await rlBtrfly.epochCount();
       const firstEpoch = await rlBtrfly.epochs(0);
 
-      expect(_btrfly.toLowerCase()).to.equal(btrfly.address.toLowerCase());
+      expect(_btrfly.toLowerCase()).to.equal(btrflyv2.address.toLowerCase());
       expect(epochCount).to.equal(1);
       expect(firstEpoch.supply).to.equal(0);
     });
@@ -133,7 +133,7 @@ describe('RLBTRFLY', function () {
     it('Should lock on valid amount of BTRFLY', async function () {
       const account = admin.address;
       const lockAmount = toBN(1e9);
-      const btrflyBalanceBefore = await btrfly.balanceOf(account);
+      const btrflyBalanceBefore = await btrflyv2.balanceOf(account);
       const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(account);
 
       const lockEvent = await callAndReturnEvent(rlBtrfly.lock, [
@@ -152,7 +152,7 @@ describe('RLBTRFLY', function () {
       });
 
       const unlockedAt = epoch.add(lockDuration);
-      const btrflyBalanceAfter = await btrfly.balanceOf(account);
+      const btrflyBalanceAfter = await btrflyv2.balanceOf(account);
       const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(account);
 
       expect(btrflyBalanceAfter).to.equal(btrflyBalanceBefore.sub(lockAmount));
@@ -179,7 +179,7 @@ describe('RLBTRFLY', function () {
     it('Should store the lock on existing lock data within the same epoch', async function () {
       const account = admin.address;
       const lockAmount = toBN(1e9);
-      const btrflyBalanceBefore = await btrfly.balanceOf(account);
+      const btrflyBalanceBefore = await btrflyv2.balanceOf(account);
       const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(account);
       const expectedTotal = lockAmount.add(lockedBalanceBefore);
       const { lockData: lockDataBefore } = await rlBtrfly.lockedBalances(
@@ -204,7 +204,7 @@ describe('RLBTRFLY', function () {
       });
 
       const unlockedAt = epoch.add(lockDuration);
-      const btrflyBalanceAfter = await btrfly.balanceOf(account);
+      const btrflyBalanceAfter = await btrflyv2.balanceOf(account);
       const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(account);
 
       expect(btrflyBalanceAfter).to.equal(btrflyBalanceBefore.sub(lockAmount));
@@ -237,7 +237,7 @@ describe('RLBTRFLY', function () {
 
       const account = admin.address;
       const lockAmount = toBN(1e9);
-      const btrflyBalanceBefore = await btrfly.balanceOf(account);
+      const btrflyBalanceBefore = await btrflyv2.balanceOf(account);
       const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(account);
       const expectedTotal = lockAmount.add(lockedBalanceBefore);
       const { lockData: lockDataBefore } = await rlBtrfly.lockedBalances(
@@ -262,7 +262,7 @@ describe('RLBTRFLY', function () {
       });
 
       const unlockedAt = epoch.add(lockDuration);
-      const btrflyBalanceAfter = await btrfly.balanceOf(account);
+      const btrflyBalanceAfter = await btrflyv2.balanceOf(account);
       const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(account);
 
       expect(btrflyBalanceAfter).to.equal(btrflyBalanceBefore.sub(lockAmount));
@@ -292,7 +292,7 @@ describe('RLBTRFLY', function () {
         lockData: lockDataBefore,
       } = await rlBtrfly.lockedBalances(account);
       const { amount: relockAmount, unlockTime } = lockDataBefore[0];
-      const btrflyBalanceBefore = await btrfly.balanceOf(account);
+      const btrflyBalanceBefore = await btrflyv2.balanceOf(account);
       const { timestamp } = await ethers.provider.getBlock('latest');
 
       // Simulate passing of time until the first lock expiry
@@ -331,7 +331,7 @@ describe('RLBTRFLY', function () {
         total: totalAfter,
         lockData: lockDataAfter,
       } = await rlBtrfly.lockedBalances(account);
-      const btrflyBalanceAfter = await btrfly.balanceOf(account);
+      const btrflyBalanceAfter = await btrflyv2.balanceOf(account);
       const lastLock = lockDataAfter[lockDataAfter.length - 1];
       const expectedUnlockForNewLock = epoch.add(lockDuration);
 
@@ -503,7 +503,7 @@ describe('RLBTRFLY', function () {
       const lockAmount = toBN(1e9);
       await rlBtrfly.lock(account, lockAmount);
 
-      const btrflyBalanceBefore = await btrfly.balanceOf(account);
+      const btrflyBalanceBefore = await btrflyv2.balanceOf(account);
       const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(account);
       const { timestamp } = await ethers.provider.getBlock('latest');
       const { unlockable, lockData } = await rlBtrfly.lockedBalances(account);
@@ -536,7 +536,7 @@ describe('RLBTRFLY', function () {
         relock: false,
       });
 
-      const btrflyBalanceAfter = await btrfly.balanceOf(account);
+      const btrflyBalanceAfter = await btrflyv2.balanceOf(account);
       const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(account);
       const { unlockable: unlockableAfter } = await rlBtrfly.lockedBalances(
         account
@@ -557,7 +557,7 @@ describe('RLBTRFLY', function () {
       const lockAmount = toBN(1e9);
       await rlBtrfly.lock(account, lockAmount);
 
-      const btrflyBalanceBefore = await btrfly.balanceOf(account);
+      const btrflyBalanceBefore = await btrflyv2.balanceOf(account);
       const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(account);
       const { timestamp } = await ethers.provider.getBlock('latest');
       const { total, unlockable, lockData } = await rlBtrfly.lockedBalances(
@@ -603,7 +603,7 @@ describe('RLBTRFLY', function () {
         relock,
       });
 
-      const btrflyBalanceAfter = await btrfly.balanceOf(account);
+      const btrflyBalanceAfter = await btrflyv2.balanceOf(account);
       const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(account);
       const {
         locked: lockedAfter,
@@ -633,7 +633,7 @@ describe('RLBTRFLY', function () {
       const lockAmount = toBN(1e9);
       await rlBtrfly.lock(account, lockAmount);
 
-      const btrflyBalanceBefore = await btrfly.balanceOf(account);
+      const btrflyBalanceBefore = await btrflyv2.balanceOf(account);
       const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(account);
       const { timestamp } = await ethers.provider.getBlock('latest');
       const { unlockable, lockData } = await rlBtrfly.lockedBalances(account);
@@ -662,7 +662,7 @@ describe('RLBTRFLY', function () {
         relock: false,
       });
 
-      const btrflyBalanceAfter = await btrfly.balanceOf(account);
+      const btrflyBalanceAfter = await btrflyv2.balanceOf(account);
       const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(account);
       const { unlockable: unlockableAfter } = await rlBtrfly.lockedBalances(
         account
@@ -695,7 +695,7 @@ describe('RLBTRFLY', function () {
       await rlBtrfly.lock(account, lockAmount);
 
       const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(account);
-      const btrflyBalanceBefore = await btrfly.balanceOf(account);
+      const btrflyBalanceBefore = await btrflyv2.balanceOf(account);
 
       // Simulate the shutdown
       const shutdownEvent = await callAndReturnEvent(rlBtrfly.shutdown, []);
@@ -711,7 +711,7 @@ describe('RLBTRFLY', function () {
       await rlBtrfly.withdrawExpiredLocksTo(admin.address);
 
       const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(account);
-      const btrflyBalanceAfter = await btrfly.balanceOf(account);
+      const btrflyBalanceAfter = await btrflyv2.balanceOf(account);
       const { locked, unlockable } = await rlBtrfly.lockedBalances(account);
 
       expect(lockedBalanceAfter).to.equal(0);
