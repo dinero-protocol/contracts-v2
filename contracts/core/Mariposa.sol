@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.12;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title Mariposa
 /// @author never
@@ -44,7 +44,6 @@ contract Mariposa is Ownable {
     error Closed();
     error NotMinter();
     error AlreadyAdded();
-    
 
     /** 
         @notice Contructor
@@ -69,8 +68,8 @@ contract Mariposa is Ownable {
         _;
     }
 
-    modifier onlyMinter() {
-        if (!isMinter[msg.sender]) revert NotMinter();
+    modifier onlyMinter(address _minter) {
+        if (!isMinter[_minter]) revert NotMinter();
         _;
     }
 
@@ -79,19 +78,18 @@ contract Mariposa is Ownable {
         @param  _recipient  address  To recieve minted tokens
         @param _amount      uint256  Amount
      */
-    function request(address _recipient, uint256 _amount) 
+    function request(address _recipient, uint256 _amount)
         external
-        onlyMinter
+        onlyMinter(msg.sender)
         nonZeroAddress(_recipient)
         nonZeroAmount(_amount)
     {
         if (isShutdown) revert Closed();
         if (_amount > mintAllowances[msg.sender]) revert ExceedsAllowance();
-        // may not be necessary as setAllowance checks this
+        if (emissions + _amount > supplyCap) revert ExceedsSupplyCap();
         emissions += _amount;
-        if (emissions > supplyCap) revert ExceedsSupplyCap();
         mintAllowances[msg.sender] -= _amount;
-        
+
         totalAllowances -= _amount;
 
         btrfly.mint(_recipient, _amount);
@@ -102,7 +100,11 @@ contract Mariposa is Ownable {
         @notice Add address to minter role.
         @param  _minter  address  Minter address
      */
-    function addMinter(address _minter) external onlyOwner {
+    function addMinter(address _minter)
+        external
+        onlyOwner
+        nonZeroAddress(_minter)
+    {
         if (isMinter[_minter]) revert AlreadyAdded();
 
         isMinter[_minter] = true;
@@ -120,13 +122,13 @@ contract Mariposa is Ownable {
     function increaseAllowance(address _contract, uint256 _amount)
         external
         onlyOwner
-        onlyMinter
         nonZeroAddress(_contract)
         nonZeroAmount(_amount)
+        onlyMinter(_contract)
     {
         if (emissions + totalAllowances + _amount > supplyCap)
             revert ExceedsSupplyCap();
-    
+
         totalAllowances += _amount;
         mintAllowances[_contract] += _amount;
 
@@ -141,12 +143,12 @@ contract Mariposa is Ownable {
     function decreaseAllowance(address _contract, uint256 _amount)
         external
         onlyOwner
-        onlyMinter
         nonZeroAddress(_contract)
         nonZeroAmount(_amount)
+        onlyMinter(_contract)
     {
-        if (emissions + totalAllowances < _amount)
-            revert UnderflowAllowance();
+        if (emissions + totalAllowances < _amount) revert UnderflowAllowance();
+        if (mintAllowances[_contract] < _amount) revert UnderflowAllowance();
 
         totalAllowances -= _amount;
         mintAllowances[_contract] -= _amount;
