@@ -116,44 +116,44 @@ contract Mariposa is Ownable {
 
     /** 
         @notice Increase allowance
-        @param  _contract  address  Contract with minting rights
+        @param  _minter  address  Address with minting rights
         @param _amount     uint256  Amount to decrease
      */
-    function increaseAllowance(address _contract, uint256 _amount)
+    function increaseAllowance(address _minter, uint256 _amount)
         external
         onlyOwner
-        nonZeroAddress(_contract)
+        nonZeroAddress(_minter)
         nonZeroAmount(_amount)
-        onlyMinter(_contract)
+        onlyMinter(_minter)
     {
         if (emissions + totalAllowances + _amount > supplyCap)
             revert ExceedsSupplyCap();
 
         totalAllowances += _amount;
-        mintAllowances[_contract] += _amount;
+        mintAllowances[_minter] += _amount;
 
-        emit IncreasedAllowance(_contract, _amount);
+        emit IncreasedAllowance(_minter, _amount);
     }
 
     /** 
         @notice Decrease allowance
-        @param  _contract  address  Contract with minting rights
+        @param  _minter  address  Address with minting rights
         @param _amount     uint256  Amount to decrease
      */
-    function decreaseAllowance(address _contract, uint256 _amount)
+    function decreaseAllowance(address _minter, uint256 _amount)
         external
         onlyOwner
-        nonZeroAddress(_contract)
+        nonZeroAddress(_minter)
         nonZeroAmount(_amount)
-        onlyMinter(_contract)
+        onlyMinter(_minter)
     {
         if (emissions + totalAllowances < _amount) revert UnderflowAllowance();
-        if (mintAllowances[_contract] < _amount) revert UnderflowAllowance();
+        if (mintAllowances[_minter] < _amount) revert UnderflowAllowance();
 
         totalAllowances -= _amount;
-        mintAllowances[_contract] -= _amount;
+        mintAllowances[_minter] -= _amount;
 
-        emit DecreasedAllowance(_contract, _amount);
+        emit DecreasedAllowance(_minter, _amount);
     }
 
     /** 
