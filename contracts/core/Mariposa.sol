@@ -147,7 +147,6 @@ contract Mariposa is Ownable {
         nonZeroAmount(_amount)
         onlyMinter(_minter)
     {
-        if (emissions + totalAllowances < _amount) revert UnderflowAllowance();
         if (mintAllowances[_minter] < _amount) revert UnderflowAllowance();
 
         totalAllowances -= _amount;
