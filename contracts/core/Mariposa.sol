@@ -25,15 +25,15 @@ contract Mariposa is Ownable {
     mapping(address => bool) public isMinter;
     address[] public minters; // Push only, beware false-positives. Only for viewing.
 
-    event AllowanceSet(address indexed _contract, uint256 _amount);
+    event AllowanceSet(address indexed _minter, uint256 _amount);
     event Requested(
-        address indexed _contract,
+        address indexed _minter,
         address indexed _recipient,
         uint256 amount
     );
     event AddedMinter(address indexed _minter);
-    event IncreasedAllowance(address indexed _contract, uint256 _amount);
-    event DecreasedAllowance(address indexed _contract, uint256 _amount);
+    event IncreasedAllowance(address indexed _minter, uint256 _amount);
+    event DecreasedAllowance(address indexed _minter, uint256 _amount);
     event Shutdown();
 
     error ZeroAddress();
@@ -87,9 +87,9 @@ contract Mariposa is Ownable {
         if (isShutdown) revert Closed();
         if (_amount > mintAllowances[msg.sender]) revert ExceedsAllowance();
         if (emissions + _amount > supplyCap) revert ExceedsSupplyCap();
+
         emissions += _amount;
         mintAllowances[msg.sender] -= _amount;
-
         totalAllowances -= _amount;
 
         btrfly.mint(_recipient, _amount);

@@ -105,7 +105,7 @@ describe('Mariposa', function () {
         [notAdmin.address, allowance]
       );
       validateEvent(allowanceEvent, 'IncreasedAllowance(address,uint256)', {
-        _contract: notAdmin.address,
+        _minter: notAdmin.address,
         _amount: allowance,
       });
 
@@ -173,7 +173,7 @@ describe('Mariposa', function () {
         [alice.address, aliceAllowance]
       );
       validateEvent(allowanceEvent, 'DecreasedAllowance(address,uint256)', {
-        _contract: alice.address,
+        _minter: alice.address,
         _amount: aliceAllowance,
       });
 
@@ -219,7 +219,7 @@ describe('Mariposa', function () {
       );
 
       validateEvent(requestEvent, 'Requested(address,address,uint256)', {
-        _contract: notAdmin.address,
+        _minter: notAdmin.address,
         _recipient: notAdmin.address,
         amount: allowance,
       });
