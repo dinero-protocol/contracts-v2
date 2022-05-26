@@ -1,128 +1,241 @@
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   callAndReturnEvent,
   validateEvent,
-  ADDRESS_ZERO
+  ADDRESS_ZERO,
+  toBN,
 } from './helpers';
-import { BTRFLY, Mariposa } from '../typechain';
-const { parseUnits } = ethers.utils;
-
+import { Mariposa } from '../typechain';
+import { BTRFLYV2 } from '../typechain/BTRFLYV2';
+import { BigNumber, ethers } from 'ethers';
 
 describe('Mariposa', function () {
   let admin: SignerWithAddress;
   let notAdmin: SignerWithAddress;
-  let btrfly: BTRFLY;
+  let alice: SignerWithAddress;
+  let bob: SignerWithAddress;
+  let btrflyV2: BTRFLYV2;
   let mariposa: Mariposa;
+  let mariposaSupplyCap: BigNumber;
 
   before(async function () {
-    ({ admin, notAdmin, btrfly, mariposa } = this);
+    ({ admin, notAdmin, alice, bob, btrflyV2, mariposa, mariposaSupplyCap } =
+      this);
   });
 
   describe('constructor', function () {
     it('Should set up contract state', async function () {
-      const _btrfly = await mariposa.btrfly();
-      const supplyCap = await mariposa.supplyCap();
+      const _btrflyV2 = await mariposa.btrfly();
+      const _supplyCap = await mariposa.supplyCap();
 
-      expect(_btrfly.toLowerCase()).to.equal(btrfly.address.toLowerCase());
-      expect(supplyCap).to.equal(parseUnits('5000000', 9));
+      expect(_btrflyV2.toLowerCase()).to.equal(btrflyV2.address.toLowerCase());
+      expect(_supplyCap).to.equal(mariposaSupplyCap);
     });
   });
 
-  describe ('add minter', function() {
-    it('Should allow only owner to add minter', async function () {
-      const account = admin.address;
-      await expect(mariposa.connect(notAdmin).addMinter(account)).to.be.revertedWith('Ownable: caller is not the owner');
+  describe('add minter', function () {
+    it('only owner can add minter', async function () {
+      await expect(
+        mariposa.connect(notAdmin).addMinter(notAdmin.address)
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
 
+    it('should revert if ZERO address', async function () {
+      await expect(
+        mariposa.connect(admin).addMinter(ADDRESS_ZERO)
+      ).to.be.revertedWith('ZeroAddress()');
+    });
+
+    it('should add minter', async function () {
       const minterEvent = await callAndReturnEvent(mariposa.addMinter, [
-        account
+        notAdmin.address,
       ]);
-
       validateEvent(minterEvent, 'AddedMinter(address)', {
-        _minter: account,
+        _minter: notAdmin.address,
       });
-    })
-
-    it('Should revert if address is already added to minter list', async function () {
-      const account = admin.address;
-      await expect(mariposa.addMinter(account)).to.be.revertedWith('AlreadyAdded()');
-    })
-  });
-  describe('increase allowance', function () {
-    it('Should allow only owner and minter increase allowance', async function () {
-      const account = admin.address;
-      await expect(mariposa.increaseAllowance(account, '0')).to.be.revertedWith('ZeroAmount()');
-      await expect(mariposa.increaseAllowance(ADDRESS_ZERO, parseUnits('1', 9))).to.be.revertedWith('ZeroAddress()');
-      await expect(mariposa.increaseAllowance(account, parseUnits('5000001', 9))).to.be.revertedWith('ExceedsSupplyCap()');
-      
-      const allowanceEvent = await callAndReturnEvent(mariposa.increaseAllowance, [
-        account, parseUnits('5000000', 9)
-      ]);
-      validateEvent(allowanceEvent, 'IncreasedAllowance(address,uint256)', {
-        _contract: account,
-        _amount: parseUnits('5000000', 9)
-      });
-
-      expect(await mariposa.mintAllowances(admin.address)).to.equal(parseUnits('5000000', 9))
     });
-  })
 
-  describe('request', function () {
-    it('Should minter minting tokens to recipient', async function () {
-      await expect(mariposa.request(notAdmin.address, '0')).to.be.revertedWith('ZeroAmount()');
-      await expect(mariposa.request(notAdmin.address, parseUnits('5000001', 9))).to.be.revertedWith('ExceedsAllowance()');
+    it('revert if minter already added', async function () {
+      await expect(
+        mariposa.connect(admin).addMinter(notAdmin.address)
+      ).to.be.revertedWith('AlreadyAdded()');
+    });
+  });
 
-      const requestEvent = await callAndReturnEvent(mariposa.request, [
-        notAdmin.address, parseUnits('1000000', 9)
-      ]);
+  describe('increase allowance', function () {
+    it('should revert if not owner', async function () {
+      await expect(
+        mariposa.connect(notAdmin).increaseAllowance(admin.address, '1')
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
 
-      validateEvent(requestEvent, 'Requested(address,address,uint256)', {
-        _contract: admin.address,
-        _recipient: notAdmin.address,
-        amount: parseUnits('1000000', 9)
+    it('should revert if zero address', async function () {
+      await expect(
+        mariposa.connect(admin).increaseAllowance(ADDRESS_ZERO, '1')
+      ).to.be.revertedWith('ZeroAddress()');
+    });
+
+    it('should revert if zero amount', async function () {
+      await expect(
+        mariposa.connect(admin).increaseAllowance(notAdmin.address, '0')
+      ).to.be.revertedWith('ZeroAmount()');
+    });
+
+    it('should revert if not minter', async function () {
+      await expect(
+        mariposa.connect(admin).increaseAllowance(alice.address, '1')
+      ).to.be.revertedWith('NotMinter()');
+    });
+
+    it('should revert if exceeds supply cap', async function () {
+      const moreThanSupplyCap = mariposaSupplyCap.add('1');
+      await expect(
+        mariposa
+          .connect(admin)
+          .increaseAllowance(notAdmin.address, moreThanSupplyCap)
+      ).to.be.revertedWith('ExceedsSupplyCap()');
+    });
+
+    it('should increase allowance', async function () {
+      const allowance = ethers.utils.parseEther(toBN(1000).toString()); // 1000 tokens
+
+      const allowanceEvent = await callAndReturnEvent(
+        mariposa.increaseAllowance,
+        [notAdmin.address, allowance]
+      );
+      validateEvent(allowanceEvent, 'IncreasedAllowance(address,uint256)', {
+        _minter: notAdmin.address,
+        _amount: allowance,
       });
 
-      expect(await mariposa.emissions()).to.equal(parseUnits('1000000', 9))
-      expect(await mariposa.mintAllowances(admin.address)).to.equal(parseUnits('4000000', 9))
+      const allowanceInState = await mariposa.mintAllowances(notAdmin.address);
+      const totalAllowanceInState = await mariposa.totalAllowances();
 
-      expect(await btrfly.balanceOf(notAdmin.address)).to.equal(parseUnits('1000000', 9));
+      expect(allowanceInState).to.equal(allowance);
+      expect(totalAllowanceInState).to.equal(allowance);
     });
   });
 
   describe('decrease allowance', function () {
-    it('Should allow only owner and minter increase allowance', async function () {
-      const account = admin.address;
-      await expect(mariposa.decreaseAllowance(account, '0')).to.be.revertedWith('ZeroAmount()');
-      await expect(mariposa.decreaseAllowance(ADDRESS_ZERO, parseUnits('1', 9))).to.be.revertedWith('ZeroAddress()');
-      await expect(mariposa.decreaseAllowance(account, parseUnits('5000001', 9))).to.be.revertedWith('UnderflowAllowance()');
-      
-      const allowanceEvent = await callAndReturnEvent(mariposa.decreaseAllowance, [
-        account, parseUnits('4000000', 9)
-      ]);
+    it('should revert if not owner', async function () {
+      await expect(
+        mariposa.connect(notAdmin).decreaseAllowance(admin.address, 1)
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
 
+    it('should revert if zero address', async function () {
+      await expect(
+        mariposa.connect(admin).decreaseAllowance(ADDRESS_ZERO, '1')
+      ).to.be.revertedWith('ZeroAddress()');
+    });
+
+    it('should revert if zero amount', async function () {
+      await expect(
+        mariposa.connect(admin).decreaseAllowance(notAdmin.address, '0')
+      ).to.be.revertedWith('ZeroAmount()');
+    });
+
+    it('should revert if not already minter', async function () {
+      await expect(
+        mariposa.connect(admin).decreaseAllowance(alice.address, '1')
+      ).to.be.revertedWith('NotMinter()');
+    });
+
+    it('should revert if underflow on totalAllowance', async function () {
+      const totalAllowances = await mariposa.totalAllowances(); // 1000 tokens
+      await expect(
+        mariposa
+          .connect(admin)
+          .decreaseAllowance(notAdmin.address, totalAllowances.add('1'))
+      ).to.be.revertedWith('UnderflowAllowance()');
+    });
+
+    it('should revert if underflow on allowance', async function () {
+      await mariposa.connect(admin).addMinter(alice.address);
+      const allowance = ethers.utils.parseEther(toBN(1000).toString()); // 1000 tokens
+      await mariposa.connect(admin).increaseAllowance(alice.address, allowance);
+      const totalAllowance = await mariposa.totalAllowances();
+      expect(totalAllowance).to.equal(allowance.mul(2));
+
+      await expect(
+        mariposa
+          .connect(admin)
+          .decreaseAllowance(notAdmin.address, totalAllowance.mul(2).add(1))
+      ).to.be.revertedWith('UnderflowAllowance()');
+    });
+
+    it('should decrease allowance', async function () {
+      const aliceAllowance = await mariposa.mintAllowances(alice.address);
+
+      const allowanceEvent = await callAndReturnEvent(
+        mariposa.decreaseAllowance,
+        [alice.address, aliceAllowance]
+      );
       validateEvent(allowanceEvent, 'DecreasedAllowance(address,uint256)', {
-        _contract: account,
-        _amount: parseUnits('4000000', 9)
+        _minter: alice.address,
+        _amount: aliceAllowance,
       });
 
-      expect(await mariposa.mintAllowances(account)).to.equal('0')
-    })
-  });
-
-  describe('shutdown', function () {
-    it('Should shutdown the contract and revert if request function is called.', async function () {
-        const shutdownEvent = await callAndReturnEvent(mariposa.shutdown, []);
-        validateEvent(shutdownEvent, 'Shutdown()', {});
-
-        await expect(mariposa.request(notAdmin.address, parseUnits('1000000', 9))).to.be.revertedWith(
-          'Closed()'
-        );
-      })
-
-    it('Should revert when called after shutdown', async function () {
-      await expect(mariposa.shutdown()).to.be.revertedWith('Closed()');
+      const currentAllowance = await mariposa.mintAllowances(alice.address);
+      expect(currentAllowance).to.equal('0');
     });
   });
 
+  describe('request', function () {
+    it('reverts if not minter', async function () {
+      await expect(
+        mariposa.connect(bob).request(bob.address, '1')
+      ).to.be.revertedWith('NotMinter()');
+    });
+
+    it('reverts if address zero', async function () {
+      await expect(
+        mariposa.connect(notAdmin).request(ADDRESS_ZERO, '1')
+      ).to.be.revertedWith('ZeroAddress()');
+    });
+
+    it('reverts if zero amount', async function () {
+      await expect(
+        mariposa.connect(notAdmin).request(notAdmin.address, '0')
+      ).to.be.revertedWith('ZeroAmount()');
+    });
+
+    it('reverts over allowance', async function () {
+      const allowance = await mariposa.mintAllowances(notAdmin.address);
+      await expect(
+        mariposa.connect(notAdmin).request(notAdmin.address, allowance.add('1'))
+      ).to.be.revertedWith('ExceedsAllowance()');
+    });
+
+    it('mints requested', async function () {
+      const allowance = await mariposa.mintAllowances(notAdmin.address);
+      expect(allowance).to.equal(
+        ethers.utils.parseEther(toBN(1000).toString())
+      );
+      const requestEvent = await callAndReturnEvent(
+        mariposa.connect(notAdmin).request,
+        [notAdmin.address, allowance]
+      );
+
+      validateEvent(requestEvent, 'Requested(address,address,uint256)', {
+        _minter: notAdmin.address,
+        _recipient: notAdmin.address,
+        amount: allowance,
+      });
+
+      expect(await mariposa.emissions()).to.equal(allowance);
+      expect(await mariposa.mintAllowances(notAdmin.address)).to.equal(toBN(0));
+      expect(await btrflyV2.balanceOf(notAdmin.address)).to.equal(allowance);
+    });
+  });
+
+  describe('shutdown', function () {
+    it('should not mint if shutdown', async function () {
+      await mariposa.connect(admin).addMinter(admin.address);
+      await mariposa.connect(admin).increaseAllowance(admin.address, toBN(1));
+      await mariposa.connect(admin).shutdown();
+      await expect(mariposa.shutdown()).to.be.revertedWith('Closed()');
+    });
+  });
 });
