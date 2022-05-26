@@ -4,12 +4,11 @@ import { toBN } from './helpers';
 
 let admin: SignerWithAddress;
 let notAdmin: SignerWithAddress;
-let vault: SignerWithAddress;
 
 const adminBtrflyBalance = toBN(100e18);
 
 before(async function () {
-  [admin, notAdmin, vault] = await ethers.getSigners();
+  [admin, notAdmin] = await ethers.getSigners();
 
   const btrflyv2 = await (await ethers.getContractFactory("BTRFLYV2")).deploy();
   const rlBtrfly = await (

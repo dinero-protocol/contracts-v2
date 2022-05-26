@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { BTRFLY, IERC20, IWXBTRFLY, IStakingHelper, TokenMigrator, MockMariposa, BTRFLYV2 } from '../typechain';
+import { RLBTRFLY, BTRFLY, IERC20, IWXBTRFLY, IStakingHelper, TokenMigrator, MockMariposa, BTRFLYV2 } from '../typechain';
 import { toBN, impersonateAddressAndReturnSigner } from './helpers';
 
 describe('Token Migrator', function () {
@@ -26,6 +26,7 @@ describe('Token Migrator', function () {
 
     let stakingHelper : IStakingHelper;
     let mariposa : MockMariposa;
+    let rlBtrfly : RLBTRFLY;
     let tokenMigrator : TokenMigrator;
 
     beforeEach( async function(){
@@ -36,12 +37,16 @@ describe('Token Migrator', function () {
         mariposa = await (await ethers.getContractFactory("MockMariposa")).deploy(btrflyv2.address) as MockMariposa;
         await btrflyv2.setVault(mariposa.address);
 
+        rlBtrfly = await (await ethers.getContractFactory("RLBTRFLY")).deploy(btrflyv2.address) as RLBTRFLY;
+
         tokenMigrator = await (await ethers.getContractFactory("TokenMigrator")).deploy(
             WXBTRFLYADDRESS,
             XBTRFLYADDRESS,
+            btrflyv2.address,
             BTRFLYV1ADDRESS,
             mariposa.address,
-            STAKINGADDRESS
+            STAKINGADDRESS,
+            rlBtrfly.address
         ) as TokenMigrator;
 
         // - impersonate dao
@@ -94,55 +99,115 @@ describe('Token Migrator', function () {
 
     describe("WXBTRFLY --> BTRFLYV2", function(){
 
-        it("mints an amount of BTRFLYV2 equal to the input WXBTRFLY amount", async function(){
-            await wxbtrfly.connect(holder).wrapFromBTRFLY(ethers.utils.parseUnits("1000","gwei"));
-            const balanceWx = await wxbtrfly.balanceOf(await holder.getAddress());
+        describe("To Unlocked BTRFLYV2", function() {
 
-            await tokenMigrator.connect(holder).fromWXBTRFLY(await holder.getAddress(),balanceWx);
-            const balanceV2 = await btrflyv2.balanceOf(await holder.getAddress());
-            const supplyV2 = await btrflyv2.totalSupply();
+            it("mints an amount of BTRFLYV2 equal to the input WXBTRFLY amount", async function(){
+                await wxbtrfly.connect(holder).wrapFromBTRFLY(ethers.utils.parseUnits("1000","gwei"));
+                const balanceWx = await wxbtrfly.balanceOf(await holder.getAddress());
+    
+                await tokenMigrator.connect(holder).fromWXBTRFLY(await holder.getAddress(),balanceWx,false);
+                const balanceV2 = await btrflyv2.balanceOf(await holder.getAddress());
+                const supplyV2 = await btrflyv2.totalSupply();
+    
+                expect(balanceV2).to.equal(balanceWx);
+                expect(supplyV2).to.equal(balanceWx);
+            })
 
-            expect(balanceV2).to.equal(balanceWx);
-            expect(supplyV2).to.equal(balanceWx);
+            it("mints BTRFLYV2 to the right address", async function(){
+                await wxbtrfly.connect(holder).wrapFromBTRFLY(ethers.utils.parseUnits("1000","gwei"));
+                const balanceWx = await wxbtrfly.balanceOf(await holder.getAddress());
+    
+                await tokenMigrator.connect(holder).fromWXBTRFLY(await receiver.getAddress(),balanceWx,false);
+                const balanceV2Receiver = await btrflyv2.balanceOf(await receiver.getAddress());
+    
+                expect(balanceV2Receiver).to.equal(balanceWx);
+            })
+
+            it("burns BTRFLYV1 tokens", async function(){
+                const totalV1SupplyPre = await btrflyv1.totalSupply();
+                const holderV1BalancePre = await btrflyv1.balanceOf(await holder.getAddress());
+    
+                await wxbtrfly.connect(holder).wrapFromBTRFLY(ethers.utils.parseUnits("1000","gwei"));
+                const balanceWx = await wxbtrfly.balanceOf(await holder.getAddress());
+                await tokenMigrator.connect(holder).fromWXBTRFLY(await holder.getAddress(),balanceWx,false);
+    
+                const totalV1SupplyPost = await btrflyv1.totalSupply();
+    
+                const holderV1BalancePost = await btrflyv1.balanceOf(await holder.getAddress());
+                const tokenMigratorV1Balance = await btrflyv1.balanceOf(tokenMigrator.address);
+    
+                expect(holderV1BalancePost.div(toBN(10)))
+                .to.equal((holderV1BalancePre.sub(ethers.utils.parseUnits("1000","gwei"))).div(toBN(10)));
+    
+                expect(tokenMigratorV1Balance).to.equal(toBN(0));
+    
+                expect(totalV1SupplyPost.div(toBN(10)))
+                .to.equal((totalV1SupplyPre.sub(ethers.utils.parseUnits("1000","gwei"))).div(toBN(10)));
+    
+            })
+
+            it("reverts when user balance is insufficient", async function(){
+
+                await expect(tokenMigrator.connect(holder).fromWXBTRFLY(await holder.getAddress(),ethers.utils.parseEther("1"),false))
+                .to.be.revertedWith("");
+    
+            })
+
         })
 
-        it("mints BTRFLYV2 to the right address", async function(){
-            await wxbtrfly.connect(holder).wrapFromBTRFLY(ethers.utils.parseUnits("1000","gwei"));
-            const balanceWx = await wxbtrfly.balanceOf(await holder.getAddress());
+        describe("To rlBTRFLY", function() {
 
-            await tokenMigrator.connect(holder).fromWXBTRFLY(await receiver.getAddress(),balanceWx);
-            const balanceV2 = await btrflyv2.balanceOf(await receiver.getAddress());
+            it("mints & rLocks an amount of BTRFLYV2 equal to the input WXBTRFLY amount", async function(){
+                await wxbtrfly.connect(holder).wrapFromBTRFLY(ethers.utils.parseUnits("1000","gwei"));
+                const balanceWx = await wxbtrfly.balanceOf(await holder.getAddress());
+    
+                await tokenMigrator.connect(holder).fromWXBTRFLY(await holder.getAddress(),balanceWx,true);
+                const balanceRL = await rlBtrfly.lockedBalanceOf(await holder.getAddress());
+                const supplyV2 = await btrflyv2.totalSupply();
+    
+                expect(balanceRL).to.equal(balanceWx);
+                expect(supplyV2).to.equal(balanceWx);
+            })
 
-            expect(balanceV2).to.equal(balanceWx);
-        })
+            it("mints & rLocks BTRFLYV2 to the right address", async function(){
+                await wxbtrfly.connect(holder).wrapFromBTRFLY(ethers.utils.parseUnits("1000","gwei"));
+                const balanceWx = await wxbtrfly.balanceOf(await holder.getAddress());
+    
+                await tokenMigrator.connect(holder).fromWXBTRFLY(await receiver.getAddress(),balanceWx,true);
+                const balanceRLReceiver = await rlBtrfly.lockedBalanceOf(await receiver.getAddress());
+    
+                expect(balanceRLReceiver).to.equal(balanceWx);
+            })
 
-        it("burns BTRFLYV1 tokens", async function(){
-            const totalV1SupplyPre = await btrflyv1.totalSupply();
-            const holderV1BalancePre = await btrflyv1.balanceOf(await holder.getAddress());
+            it("burns BTRFLYV1 tokens", async function(){
+                const totalV1SupplyPre = await btrflyv1.totalSupply();
+                const holderV1BalancePre = await btrflyv1.balanceOf(await holder.getAddress());
+    
+                await wxbtrfly.connect(holder).wrapFromBTRFLY(ethers.utils.parseUnits("1000","gwei"));
+                const balanceWx = await wxbtrfly.balanceOf(await holder.getAddress());
+                await tokenMigrator.connect(holder).fromWXBTRFLY(await holder.getAddress(),balanceWx,true);
+    
+                const totalV1SupplyPost = await btrflyv1.totalSupply();
+    
+                const holderV1BalancePost = await btrflyv1.balanceOf(await holder.getAddress());
+                const tokenMigratorV1Balance = await btrflyv1.balanceOf(tokenMigrator.address);
+    
+                expect(holderV1BalancePost.div(toBN(10)))
+                .to.equal((holderV1BalancePre.sub(ethers.utils.parseUnits("1000","gwei"))).div(toBN(10)));
+    
+                expect(tokenMigratorV1Balance).to.equal(toBN(0));
+    
+                expect(totalV1SupplyPost.div(toBN(10)))
+                .to.equal((totalV1SupplyPre.sub(ethers.utils.parseUnits("1000","gwei"))).div(toBN(10)));
+    
+            })
 
-            await wxbtrfly.connect(holder).wrapFromBTRFLY(ethers.utils.parseUnits("1000","gwei"));
-            const balanceWx = await wxbtrfly.balanceOf(await holder.getAddress());
-            await tokenMigrator.connect(holder).fromWXBTRFLY(await holder.getAddress(),balanceWx);
+            it("reverts when user balance is insufficient", async function(){
 
-            const totalV1SupplyPost = await btrflyv1.totalSupply();
-
-            const holderV1BalancePost = await btrflyv1.balanceOf(await holder.getAddress());
-            const tokenMigratorV1Balance = await btrflyv1.balanceOf(tokenMigrator.address);
-
-            expect(holderV1BalancePost.div(toBN(10)))
-            .to.equal((holderV1BalancePre.sub(ethers.utils.parseUnits("1000","gwei"))).div(toBN(10)));
-
-            expect(tokenMigratorV1Balance).to.equal(toBN(0));
-
-            expect(totalV1SupplyPost.div(toBN(10)))
-            .to.equal((totalV1SupplyPre.sub(ethers.utils.parseUnits("1000","gwei"))).div(toBN(10)));
-
-        })
-
-        it("reverts when user balance is insufficient", async function(){
-
-            await expect(tokenMigrator.connect(holder).fromWXBTRFLY(await holder.getAddress(),ethers.utils.parseEther("1")))
-            .to.be.revertedWith("");
+                await expect(tokenMigrator.connect(holder).fromWXBTRFLY(await holder.getAddress(),ethers.utils.parseEther("1"),true))
+                .to.be.revertedWith("");
+    
+            })
 
         })
 
@@ -150,108 +215,224 @@ describe('Token Migrator', function () {
 
     describe("XBTRFLY --> BTRFLYV2", function(){
 
-        it("mints an amount of BTRFLYV2 equal to the input XBTRFLY amount", async function(){
-            await stakingHelper.connect(holder).stake(ethers.utils.parseUnits("1000","gwei"));
+        describe("To Unlocked BTRFLYV2", function() {
 
-            const valueWx = (await wxbtrfly.wBTRFLYValue(ethers.utils.parseUnits("1000","gwei")));
+            it("mints an amount of BTRFLYV2 equal to the input XBTRFLY amount", async function(){
+                await stakingHelper.connect(holder).stake(ethers.utils.parseUnits("1000","gwei"));
+    
+                const valueWx = (await wxbtrfly.wBTRFLYValue(ethers.utils.parseUnits("1000","gwei")));
+    
+                await tokenMigrator.connect(holder).fromXBTRFLY(await holder.getAddress(),(ethers.utils.parseUnits("1000","gwei")),false);
+                const balanceV2 = await btrflyv2.balanceOf(await holder.getAddress());
+                const supplyV2 = await btrflyv2.totalSupply();
+    
+                expect(balanceV2).to.equal(valueWx);
+                expect(supplyV2).to.equal(valueWx);
+            })
+    
+            it("mints BTRFLYV2 to the right address", async function(){
+                await stakingHelper.connect(holder).stake(ethers.utils.parseUnits("1000","gwei"));
+    
+                const valueWx = await wxbtrfly.wBTRFLYValue(ethers.utils.parseUnits("1000","gwei"));
+    
+                await tokenMigrator.connect(holder).fromXBTRFLY(await receiver.getAddress(),(ethers.utils.parseUnits("1000","gwei")),false);
+                const balanceV2Receiver = await btrflyv2.balanceOf(await receiver.getAddress());
+    
+                expect(balanceV2Receiver).to.equal(valueWx);
+            })
+    
+            it("burns BTRFLYV1 tokens", async function(){
+                const totalV1SupplyPre = await btrflyv1.totalSupply();
+                const holderV1BalancePre = await btrflyv1.balanceOf(await holder.getAddress());
+    
+                await stakingHelper.connect(holder).stake(ethers.utils.parseUnits("1000","gwei"));
+    
+                await tokenMigrator.connect(holder).fromXBTRFLY(await holder.getAddress(),(ethers.utils.parseUnits("1000","gwei")),false);
+    
+                const totalV1SupplyPost = await btrflyv1.totalSupply();
+    
+                const holderV1BalancePost = await btrflyv1.balanceOf(await holder.getAddress());
+                const tokenMigratorV1Balance = await btrflyv1.balanceOf(tokenMigrator.address);
+    
+                expect(holderV1BalancePost)
+                .to.equal((holderV1BalancePre.sub(ethers.utils.parseUnits("1000","gwei"))));
+    
+                expect(tokenMigratorV1Balance).to.equal(toBN(0));
+    
+                expect(totalV1SupplyPost)
+                .to.equal((totalV1SupplyPre.sub(ethers.utils.parseUnits("1000","gwei"))));
+            })
+    
+            it("reverts when user balance is insufficient", async function() {
+                await expect(tokenMigrator.connect(holder).fromXBTRFLY(await holder.getAddress(),ethers.utils.parseUnits("1000","gwei"),false))
+                .to.be.revertedWith("");
+            })
 
-            await tokenMigrator.connect(holder).fromXBTRFLY(await holder.getAddress(),(ethers.utils.parseUnits("1000","gwei")));
-            const balanceV2 = await btrflyv2.balanceOf(await holder.getAddress());
-            const supplyV2 = await btrflyv2.totalSupply();
-
-            expect(balanceV2).to.equal(valueWx);
-            expect(supplyV2).to.equal(valueWx);
         })
 
-        it("mints BTRFLYV2 to the right address", async function(){
-            await stakingHelper.connect(holder).stake(ethers.utils.parseUnits("1000","gwei"));
+        describe("To rlBTRFLY", function() {
 
-            const valueWx = await wxbtrfly.wBTRFLYValue(ethers.utils.parseUnits("1000","gwei"));
+            it("mints & rLocks an amount of BTRFLYV2 equal to the input XBTRFLY amount", async function(){
+                await stakingHelper.connect(holder).stake(ethers.utils.parseUnits("1000","gwei"));
+    
+                const valueWx = (await wxbtrfly.wBTRFLYValue(ethers.utils.parseUnits("1000","gwei")));
+    
+                await tokenMigrator.connect(holder).fromXBTRFLY(await holder.getAddress(),(ethers.utils.parseUnits("1000","gwei")),true);
+                const balanceRL = await rlBtrfly.lockedBalanceOf(await holder.getAddress());
+                const supplyV2 = await btrflyv2.totalSupply();
+    
+                expect(balanceRL).to.equal(valueWx);
+                expect(supplyV2).to.equal(valueWx);
+            })
+    
+            it("mints & rLocks BTRFLYV2 to the right address", async function(){
+                await stakingHelper.connect(holder).stake(ethers.utils.parseUnits("1000","gwei"));
+    
+                const valueWx = await wxbtrfly.wBTRFLYValue(ethers.utils.parseUnits("1000","gwei"));
+    
+                await tokenMigrator.connect(holder).fromXBTRFLY(await receiver.getAddress(),(ethers.utils.parseUnits("1000","gwei")),true);
+                const balanceRLReceiver = await rlBtrfly.lockedBalanceOf(await receiver.getAddress());
+    
+                expect(balanceRLReceiver).to.equal(valueWx);
+            })
+    
+            it("burns BTRFLYV1 tokens", async function(){
+                const totalV1SupplyPre = await btrflyv1.totalSupply();
+                const holderV1BalancePre = await btrflyv1.balanceOf(await holder.getAddress());
+    
+                await stakingHelper.connect(holder).stake(ethers.utils.parseUnits("1000","gwei"));
+    
+                await tokenMigrator.connect(holder).fromXBTRFLY(await holder.getAddress(),(ethers.utils.parseUnits("1000","gwei")),true);
+    
+                const totalV1SupplyPost = await btrflyv1.totalSupply();
+    
+                const holderV1BalancePost = await btrflyv1.balanceOf(await holder.getAddress());
+                const tokenMigratorV1Balance = await btrflyv1.balanceOf(tokenMigrator.address);
+    
+                expect(holderV1BalancePost)
+                .to.equal((holderV1BalancePre.sub(ethers.utils.parseUnits("1000","gwei"))));
+    
+                expect(tokenMigratorV1Balance).to.equal(toBN(0));
+    
+                expect(totalV1SupplyPost)
+                .to.equal((totalV1SupplyPre.sub(ethers.utils.parseUnits("1000","gwei"))));
+            })
+    
+            it("reverts when user balance is insufficient", async function() {
+                await expect(tokenMigrator.connect(holder).fromXBTRFLY(await holder.getAddress(),ethers.utils.parseUnits("1000","gwei"),true))
+                .to.be.revertedWith("");
+            })
 
-            await tokenMigrator.connect(holder).fromXBTRFLY(await receiver.getAddress(),(ethers.utils.parseUnits("1000","gwei")));
-            const balanceV2Receiver = await btrflyv2.balanceOf(await receiver.getAddress());
-
-            expect(balanceV2Receiver).to.equal(valueWx);
-        })
-
-        it("burns BTRFLYV1 tokens", async function(){
-            const totalV1SupplyPre = await btrflyv1.totalSupply();
-            const holderV1BalancePre = await btrflyv1.balanceOf(await holder.getAddress());
-
-            await stakingHelper.connect(holder).stake(ethers.utils.parseUnits("1000","gwei"));
-
-            await tokenMigrator.connect(holder).fromXBTRFLY(await holder.getAddress(),(ethers.utils.parseUnits("1000","gwei")));
-
-            const totalV1SupplyPost = await btrflyv1.totalSupply();
-
-            const holderV1BalancePost = await btrflyv1.balanceOf(await holder.getAddress());
-            const tokenMigratorV1Balance = await btrflyv1.balanceOf(tokenMigrator.address);
-
-            expect(holderV1BalancePost)
-            .to.equal((holderV1BalancePre.sub(ethers.utils.parseUnits("1000","gwei"))));
-
-            expect(tokenMigratorV1Balance).to.equal(toBN(0));
-
-            expect(totalV1SupplyPost)
-            .to.equal((totalV1SupplyPre.sub(ethers.utils.parseUnits("1000","gwei"))));
-        })
-
-        it("reverts when user balance is insufficient", async function() {
-            await expect(tokenMigrator.connect(holder).fromXBTRFLY(await holder.getAddress(),ethers.utils.parseUnits("1000","gwei")))
-            .to.be.revertedWith("");
         })
 
 })
 
     describe("BTRFLYV1 --> BTRFLYV2", async function(){
 
-        it("mints an amount of BTRFLYV2 equal to the input XBTRFLY amount", async function(){
+        describe("To Unlocked BTRFLYV2", function(){
 
-            const valueWx = (await wxbtrfly.wBTRFLYValue(ethers.utils.parseUnits("1000","gwei")));
+            it("mints an amount of BTRFLYV2 equal to the input XBTRFLY amount", async function(){
 
-            await tokenMigrator.connect(holder).fromBTRFLY(await holder.getAddress(),(ethers.utils.parseUnits("1000","gwei")));
-            const balanceV2 = await btrflyv2.balanceOf(await holder.getAddress());
-            const supplyV2 = await btrflyv2.totalSupply();
+                const valueWx = (await wxbtrfly.wBTRFLYValue(ethers.utils.parseUnits("1000","gwei")));
+    
+                await tokenMigrator.connect(holder).fromBTRFLY(await holder.getAddress(),(ethers.utils.parseUnits("1000","gwei")),false);
+                const balanceV2 = await btrflyv2.balanceOf(await holder.getAddress());
+                const supplyV2 = await btrflyv2.totalSupply();
+    
+                expect(balanceV2).to.equal(valueWx);
+                expect(supplyV2).to.equal(valueWx);
+            })
+    
+            it("mints BTRFLYV2 to the right address", async function(){
+    
+                const valueWx = await wxbtrfly.wBTRFLYValue(ethers.utils.parseUnits("1000","gwei"));
+    
+                await tokenMigrator.connect(holder).fromBTRFLY(await receiver.getAddress(),(ethers.utils.parseUnits("1000","gwei")),false);
+                const balanceV2Receiver = await btrflyv2.balanceOf(await receiver.getAddress());
+    
+                expect(balanceV2Receiver).to.equal(valueWx);
+            })
+    
+            it("burns BTRFLYV1 tokens", async function(){
+    
+                const totalV1SupplyPre = await btrflyv1.totalSupply();
+                const holderV1BalancePre = await btrflyv1.balanceOf(await holder.getAddress());
+    
+                await tokenMigrator.connect(holder).fromBTRFLY(await holder.getAddress(),(ethers.utils.parseUnits("1000","gwei")),false);
+    
+                const totalV1SupplyPost = await btrflyv1.totalSupply();
+    
+                const holderV1BalancePost = await btrflyv1.balanceOf(await holder.getAddress());
+                const tokenMigratorV1Balance = await btrflyv1.balanceOf(tokenMigrator.address);
+    
+                expect(holderV1BalancePost)
+                .to.equal((holderV1BalancePre.sub(ethers.utils.parseUnits("1000","gwei"))));
+    
+                expect(tokenMigratorV1Balance).to.equal(toBN(0));
+    
+                expect(totalV1SupplyPost)
+                .to.equal((totalV1SupplyPre.sub(ethers.utils.parseUnits("1000","gwei"))));
+    
+            })
+    
+            it("reverts when user balance is insufficient", async function() {
+                await expect(tokenMigrator.connect(receiver).fromBTRFLY(await receiver.getAddress(),ethers.utils.parseUnits("1000","gwei"),false))
+                .to.be.revertedWith("");
+            })
 
-            expect(balanceV2).to.equal(valueWx);
-            expect(supplyV2).to.equal(valueWx);
         })
 
-        it("mints BTRFLYV2 to the right address", async function(){
+        describe("To rlBTRFLY", function(){
 
-            const valueWx = await wxbtrfly.wBTRFLYValue(ethers.utils.parseUnits("1000","gwei"));
+            it("mints & rLocks an amount of BTRFLYV2 equal to the input XBTRFLY amount", async function(){
 
-            await tokenMigrator.connect(holder).fromBTRFLY(await receiver.getAddress(),(ethers.utils.parseUnits("1000","gwei")));
-            const balanceV2Receiver = await btrflyv2.balanceOf(await receiver.getAddress());
+                const valueWx = (await wxbtrfly.wBTRFLYValue(ethers.utils.parseUnits("1000","gwei")));
+    
+                await tokenMigrator.connect(holder).fromBTRFLY(await holder.getAddress(),(ethers.utils.parseUnits("1000","gwei")),true);
+                const balanceRL = await rlBtrfly.lockedBalanceOf(await holder.getAddress());
+                const supplyV2 = await btrflyv2.totalSupply();
+    
+                expect(balanceRL).to.equal(valueWx);
+                expect(supplyV2).to.equal(valueWx);
+            })
+    
+            it("mints & rLocks BTRFLYV2 to the right address", async function(){
+    
+                const valueWx = await wxbtrfly.wBTRFLYValue(ethers.utils.parseUnits("1000","gwei"));
+    
+                await tokenMigrator.connect(holder).fromBTRFLY(await receiver.getAddress(),(ethers.utils.parseUnits("1000","gwei")),true);
+                const balanceRLReceiver = await rlBtrfly.lockedBalanceOf(await receiver.getAddress());
+    
+                expect(balanceRLReceiver).to.equal(valueWx);
+            })
+    
+            it("burns BTRFLYV1 tokens", async function(){
+    
+                const totalV1SupplyPre = await btrflyv1.totalSupply();
+                const holderV1BalancePre = await btrflyv1.balanceOf(await holder.getAddress());
+    
+                await tokenMigrator.connect(holder).fromBTRFLY(await holder.getAddress(),(ethers.utils.parseUnits("1000","gwei")),true);
+    
+                const totalV1SupplyPost = await btrflyv1.totalSupply();
+    
+                const holderV1BalancePost = await btrflyv1.balanceOf(await holder.getAddress());
+                const tokenMigratorV1Balance = await btrflyv1.balanceOf(tokenMigrator.address);
+    
+                expect(holderV1BalancePost)
+                .to.equal((holderV1BalancePre.sub(ethers.utils.parseUnits("1000","gwei"))));
+    
+                expect(tokenMigratorV1Balance).to.equal(toBN(0));
+    
+                expect(totalV1SupplyPost)
+                .to.equal((totalV1SupplyPre.sub(ethers.utils.parseUnits("1000","gwei"))));
+    
+            })
+    
+            it("reverts when user balance is insufficient", async function() {
+                await expect(tokenMigrator.connect(receiver).fromBTRFLY(await receiver.getAddress(),ethers.utils.parseUnits("1000","gwei"),true))
+                .to.be.revertedWith("");
+            })
 
-            expect(balanceV2Receiver).to.equal(valueWx);
-        })
-
-        it("burns BTRFLYV1 tokens", async function(){
-
-            const totalV1SupplyPre = await btrflyv1.totalSupply();
-            const holderV1BalancePre = await btrflyv1.balanceOf(await holder.getAddress());
-
-            await tokenMigrator.connect(holder).fromBTRFLY(await holder.getAddress(),(ethers.utils.parseUnits("1000","gwei")));
-
-            const totalV1SupplyPost = await btrflyv1.totalSupply();
-
-            const holderV1BalancePost = await btrflyv1.balanceOf(await holder.getAddress());
-            const tokenMigratorV1Balance = await btrflyv1.balanceOf(tokenMigrator.address);
-
-            expect(holderV1BalancePost)
-            .to.equal((holderV1BalancePre.sub(ethers.utils.parseUnits("1000","gwei"))));
-
-            expect(tokenMigratorV1Balance).to.equal(toBN(0));
-
-            expect(totalV1SupplyPost)
-            .to.equal((totalV1SupplyPre.sub(ethers.utils.parseUnits("1000","gwei"))));
-
-        })
-
-        it("reverts when user balance is insufficient", async function() {
-            await expect(tokenMigrator.connect(receiver).fromBTRFLY(await receiver.getAddress(),ethers.utils.parseUnits("1000","gwei")))
-            .to.be.revertedWith("");
         })
 
     })

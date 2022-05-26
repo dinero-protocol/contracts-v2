@@ -51,7 +51,7 @@ describe('BTRFLYV2', function(){
 
         it("Allows owner to set vault", async function(){
 
-            await btrflyv2.setVault(await vault.getAddress());
+            await btrflyv2.connect(admin).setVault(await vault.getAddress());
             const _vault = await btrflyv2.vault();
 
             expect(_vault.toLowerCase()).to.equal((await vault.getAddress()).toLowerCase());
@@ -60,7 +60,7 @@ describe('BTRFLYV2', function(){
 
         it("Allows vault to mint tokens", async function(){
 
-            await btrflyv2.setVault(await vault.getAddress());
+            await btrflyv2.connect(admin).setVault(await vault.getAddress());
             await btrflyv2.connect(vault).mint(await notAdmin.getAddress(), toBN(100e18));
 
             const balance = await btrflyv2.balanceOf(await notAdmin.getAddress());
