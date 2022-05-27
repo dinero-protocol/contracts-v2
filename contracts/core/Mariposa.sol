@@ -86,7 +86,6 @@ contract Mariposa is Ownable {
     {
         if (isShutdown) revert Closed();
         if (_amount > mintAllowances[msg.sender]) revert ExceedsAllowance();
-        if (emissions + _amount > supplyCap) revert ExceedsSupplyCap();
 
         emissions += _amount;
         mintAllowances[msg.sender] -= _amount;
