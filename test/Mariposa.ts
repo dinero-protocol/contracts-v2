@@ -238,9 +238,6 @@ describe('Mariposa', function () {
     });
 
     it('owner can shutdown mariposa', async function () {
-      await mariposa.connect(admin).addMinter(admin.address);
-      await mariposa.connect(admin).increaseAllowance(admin.address, toBN(1));
-
       const shutdownEvent = await callAndReturnEvent(
         mariposa.connect(admin).shutdown,
         []
@@ -248,10 +245,19 @@ describe('Mariposa', function () {
       validateEvent(shutdownEvent, 'Shutdown()', {});
     });
 
-    it('should not mint if shutdown', async function () {
+    it('shut down should revert if already shutdown ', async function () {
       await expect(mariposa.connect(admin).shutdown()).to.be.revertedWith(
         'Closed()'
       );
+    });
+
+    it('should not mint if already shutdown', async function () {
+      await mariposa.connect(admin).addMinter(admin.address);
+      await mariposa.connect(admin).increaseAllowance(admin.address, toBN(1));
+
+      await expect(
+        mariposa.connect(admin).request(admin.address, toBN(1))
+      ).to.be.revertedWith('Closed()');
     });
   });
 });
