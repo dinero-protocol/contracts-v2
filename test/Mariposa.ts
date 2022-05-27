@@ -231,11 +231,33 @@ describe('Mariposa', function () {
   });
 
   describe('shutdown', function () {
-    it('should not mint if shutdown', async function () {
+    it('should revert if not owner', async function () {
+      await expect(mariposa.connect(notAdmin).shutdown()).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      );
+    });
+
+    it('owner can shutdown mariposa', async function () {
+      const shutdownEvent = await callAndReturnEvent(
+        mariposa.connect(admin).shutdown,
+        []
+      );
+      validateEvent(shutdownEvent, 'Shutdown()', {});
+    });
+
+    it('shut down should revert if already shutdown ', async function () {
+      await expect(mariposa.connect(admin).shutdown()).to.be.revertedWith(
+        'Closed()'
+      );
+    });
+
+    it('should not mint if already shutdown', async function () {
       await mariposa.connect(admin).addMinter(admin.address);
       await mariposa.connect(admin).increaseAllowance(admin.address, toBN(1));
-      await mariposa.connect(admin).shutdown();
-      await expect(mariposa.shutdown()).to.be.revertedWith('Closed()');
+
+      await expect(
+        mariposa.connect(admin).request(admin.address, toBN(1))
+      ).to.be.revertedWith('Closed()');
     });
   });
 });
