@@ -19,15 +19,14 @@ import {RLBTRFLY} from "./RLBTRFLY.sol";
     receives btrfly/xbtrfly/wxbtrfly --> requests wx value for recipient --> unwraps btrfly and burns
 */
 
-contract TokenMigrator{
-
-    IWXBTRFLY immutable public wxbtrfly;
-    ERC20 immutable public xbtrfly;
-    ERC20 immutable public btrflyv2;
-    IBTRFLYV1 immutable public btrflyv1;
-    IMariposa immutable public mariposa;
-    IStaking immutable public staking;
-    RLBTRFLY immutable public rlBtrfly;
+contract TokenMigrator {
+    IWXBTRFLY public immutable wxbtrfly;
+    ERC20 public immutable xbtrfly;
+    ERC20 public immutable btrflyv2;
+    IBTRFLYV1 public immutable btrflyv1;
+    IMariposa public immutable mariposa;
+    IStaking public immutable staking;
+    RLBTRFLY public immutable rlBtrfly;
 
     error ZeroAddress();
     error ZeroAmount();
@@ -48,23 +47,23 @@ contract TokenMigrator{
         address mariposa_,
         address staking_,
         address rlBtrfly_
-    ){
-        if (wxbtrfly_ == address(0))    revert ZeroAddress();
-        if (xbtrfly_ == address(0))     revert ZeroAddress();
-        if (btrflyv2_ == address(0))    revert ZeroAddress();
-        if (btrflyv1_ == address(0))    revert ZeroAddress();
-        if (mariposa_ == address(0))    revert ZeroAddress();
-        if (staking_ == address(0))     revert ZeroAddress();
-        if (rlBtrfly_ == address(0))    revert ZeroAddress();
-        wxbtrfly    = IWXBTRFLY(wxbtrfly_);
-        xbtrfly     = ERC20(xbtrfly_);
-        btrflyv2    = ERC20(btrflyv2_);
-        btrflyv1      = IBTRFLYV1(btrflyv1_);
-        mariposa    = IMariposa(mariposa_);
-        staking     = IStaking(staking_);
-        rlBtrfly    = RLBTRFLY(rlBtrfly_);
-        xbtrfly.approve(staking_, 2**256 -1);
-        btrflyv2.approve(rlBtrfly_, 2**256 -1);
+    ) {
+        if (wxbtrfly_ == address(0)) revert ZeroAddress();
+        if (xbtrfly_ == address(0)) revert ZeroAddress();
+        if (btrflyv2_ == address(0)) revert ZeroAddress();
+        if (btrflyv1_ == address(0)) revert ZeroAddress();
+        if (mariposa_ == address(0)) revert ZeroAddress();
+        if (staking_ == address(0)) revert ZeroAddress();
+        if (rlBtrfly_ == address(0)) revert ZeroAddress();
+        wxbtrfly = IWXBTRFLY(wxbtrfly_);
+        xbtrfly = ERC20(xbtrfly_);
+        btrflyv2 = ERC20(btrflyv2_);
+        btrflyv1 = IBTRFLYV1(btrflyv1_);
+        mariposa = IMariposa(mariposa_);
+        staking = IStaking(staking_);
+        rlBtrfly = RLBTRFLY(rlBtrfly_);
+        xbtrfly.approve(staking_, 2**256 - 1);
+        btrflyv2.approve(rlBtrfly_, 2**256 - 1);
     }
 
     /**
@@ -80,62 +79,73 @@ contract TokenMigrator{
         uint256 v1Amount_,
         address recipient_,
         bool rl_
-    ) external{
+    ) external {
         uint256 value = wxAmount_;
         value += wxbtrfly.wBTRFLYValue(xAmount_);
         value += wxbtrfly.wBTRFLYValue(v1Amount_);
 
         //Receive XBTRFLY
-        xbtrfly.transferFrom(msg.sender,address(this),xAmount_);
+        xbtrfly.transferFrom(msg.sender, address(this), xAmount_);
         //Unstake
         staking.unstake(xAmount_, false);
 
         //Receive WXBTRFLY
-        wxbtrfly.transferFrom(msg.sender,address(this),wxAmount_);
+        wxbtrfly.transferFrom(msg.sender, address(this), wxAmount_);
 
         //Unwraps WXBTRFLY and immediately calls burn
         btrflyv1.burn(xAmount_ + wxbtrfly.unwrapToBTRFLY(wxAmount_));
 
         //Using burnFrom saves gas (no transferFrom from)
-        btrflyv1.burnFrom(msg.sender,v1Amount_);
+        btrflyv1.burnFrom(msg.sender, v1Amount_);
 
-        if(rl_) _mintAndLock( recipient_, value);
+        if (rl_)
+            _mintAndLock(recipient_, value);
 
-        //Mint wxAmount via mariposa
-        else mariposa.request( recipient_, value);
+            //Mint wxAmount via mariposa
+        else mariposa.request(recipient_, value);
     }
 
     /**
         @param recipient_      address     address that will receive the minted BTRFLYV2
         @param amount_          uint256     amount of BTRFLYV1 tokens to convert into BTRFLYV2     
      */
-    function fromBTRFLY(address recipient_, uint256 amount_, bool rl) external{
+    function fromBTRFLY(
+        address recipient_,
+        uint256 amount_,
+        bool rl
+    ) external {
         //calculate wx value
         uint256 value = wxbtrfly.wBTRFLYValue(amount_);
         //burnFrom (calling burnFrom directly saves gas)
-        btrflyv1.burnFrom(msg.sender,amount_);
+        btrflyv1.burnFrom(msg.sender, amount_);
 
-        if(rl) _mintAndLock( recipient_, value);
-        //mint wxAmount via mariposa
-        else mariposa.request( recipient_, value);
+        if (rl)
+            _mintAndLock(recipient_, value);
+            //mint wxAmount via mariposa
+        else mariposa.request(recipient_, value);
     }
 
     /**
         @param recipient_      address     address that will receive the minted BTRFLYV2
         @param amount_          uint256     amount of XBTRFLY tokens to convert into BTRFLYV2     
      */
-    function fromXBTRFLY(address recipient_, uint256 amount_, bool rl) external{
+    function fromXBTRFLY(
+        address recipient_,
+        uint256 amount_,
+        bool rl
+    ) external {
         //calculate wx value
         uint256 value = wxbtrfly.wBTRFLYValue(amount_);
         //receive tokens
-        xbtrfly.transferFrom(msg.sender,address(this),amount_);
+        xbtrfly.transferFrom(msg.sender, address(this), amount_);
         //unstake
         staking.unstake(amount_, false);
         //burn
         btrflyv1.burn(amount_);
 
-        if(rl) _mintAndLock( recipient_, value);
-        ///mint wxAmount via mariposa
+        if (rl)
+            _mintAndLock(recipient_, value);
+            ///mint wxAmount via mariposa
         else mariposa.request(recipient_, value);
     }
 
@@ -143,22 +153,26 @@ contract TokenMigrator{
         @param recipient_      address     address that will receive the minted BTRFLYV2
         @param amount_          uint256     amount of WXBTRFLY tokens to convert into BTRFLYV2     
      */
-    function fromWXBTRFLY(address recipient_, uint256 amount_, bool rl) external{
+    function fromWXBTRFLY(
+        address recipient_,
+        uint256 amount_,
+        bool rl
+    ) external {
         //receive tokens
-        wxbtrfly.transferFrom(msg.sender,address(this),amount_);
+        wxbtrfly.transferFrom(msg.sender, address(this), amount_);
         //unstake
         uint256 burnAmount = wxbtrfly.unwrapToBTRFLY(amount_);
         //burn
         btrflyv1.burn(burnAmount);
 
-        if(rl) _mintAndLock( recipient_, amount_);
-        ///mint wxAmount via mariposa
-        else mariposa.request( recipient_, amount_);
+        if (rl)
+            _mintAndLock(recipient_, amount_);
+            ///mint wxAmount via mariposa
+        else mariposa.request(recipient_, amount_);
     }
 
-    function _mintAndLock(address recipient_, uint256 amount_) internal{
-        mariposa.request( address(this), amount_);
+    function _mintAndLock(address recipient_, uint256 amount_) internal {
+        mariposa.request(address(this), amount_);
         rlBtrfly.lock(recipient_, amount_);
     }
-
 }

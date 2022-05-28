@@ -12,15 +12,13 @@ import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
     Minimum viable token for BTRFLYV2, follows same patterns as V1 token, but with improved readability
 */
 
-contract BTRFLYV2 is VaultOwned, ERC20("BTRFLY","BTRFLY",18) {
-
+contract BTRFLYV2 is VaultOwned, ERC20("BTRFLY", "BTRFLY", 18) {
     /**
         @notice externally exposes the _mint method to the vault address
         @param  to      address  address to receive tokens
         @param  amount  uint256  amount to mint
      */
-    function mint(address to, uint256 amount) external onlyVault{
+    function mint(address to, uint256 amount) external onlyVault {
         _mint(to, amount);
     }
-
 }

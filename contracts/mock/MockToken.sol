@@ -8,13 +8,10 @@ pragma solidity >=0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract MockToken is ERC20{
-
+contract MockToken is ERC20 {
     uint8 internal _decimals;
 
-    constructor(uint8 decimals_)
-    ERC20("TEST","TEST")
-    {
+    constructor(uint8 decimals_) ERC20("TEST", "TEST") {
         _decimals = decimals_;
     }
 
@@ -22,8 +19,7 @@ contract MockToken is ERC20{
         return _decimals;
     }
 
-    function mint(address recipient, uint256 amount) external{
+    function mint(address recipient, uint256 amount) external {
         _mint(recipient, amount);
     }
-
 }

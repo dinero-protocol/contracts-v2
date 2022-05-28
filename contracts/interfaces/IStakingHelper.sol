@@ -2,7 +2,5 @@
 pragma solidity >=0.8.0;
 
 interface IStakingHelper {
-
-    function stake( uint _amount ) external ;
-    
+    function stake(uint256 _amount) external;
 }
