@@ -49,6 +49,20 @@ describe('RLBTRFLY', function () {
     });
   });
 
+  describe('getCurrentEpoch', function () {
+    it('Should return the current epoch', async function () {
+      const expectedCurrentEpoch = toBN(
+        (await ethers.provider.getBlock('latest')).timestamp
+      )
+        .div(epochDuration)
+        .mul(epochDuration);
+      const currentEpoch = await rlBtrfly.getCurrentEpoch();
+
+      expect(expectedCurrentEpoch).to.not.equal(0);
+      expect(expectedCurrentEpoch).to.equal(currentEpoch);
+    });
+  });
+
   describe('lock', function () {
     it('Should revert on invalid amount of BTRFLY', async function () {
       const account = admin.address;
