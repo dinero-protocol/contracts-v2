@@ -35,7 +35,7 @@ contract TokenMigrator{
     /**
         @param wxbtrfly_    address     wxbtrfly token address
         @param xbtrfly_     address     xbtrfly token address
-        @param btrflyv1_      address     btrfly token address
+        @param btrflyv1_    address     btrfly token address
         @param mariposa_    address     mariposa contract address
         @param staking_     address     staking contract address
      */
@@ -65,6 +65,44 @@ contract TokenMigrator{
         rlBtrfly    = RLBTRFLY(rlBtrfly_);
         xbtrfly.approve(staking_, 2**256 -1);
         btrflyv2.approve(rlBtrfly_, 2**256 -1);
+    }
+
+    /**
+        @param wxAmount_    uint256     amount of wxBTRFLY (in wei units) to migrate
+        @param xAmount_     uint256     amount of xBTRFLY (in wei units) to migrate
+        @param v1Amount_    uint256     amount of V1 vanilla BTRFLY (in wei units) to migrate
+        @param recipient_   address     address to recieve V2 BTRFLY (in wei units)
+        @param rl_          bool        whether to revenue lock newly minted V2 BTRFLY
+     */
+    function migrate(
+        uint256 wxAmount_,
+        uint256 xAmount_,
+        uint256 v1Amount_,
+        address recipient_,
+        bool rl_
+    ) external{
+        uint256 value = wxAmount_;
+        value += wxbtrfly.wBTRFLYValue(xAmount_);
+        value += wxbtrfly.wBTRFLYValue(v1Amount_);
+
+        //Receive XBTRFLY
+        xbtrfly.transferFrom(msg.sender,address(this),xAmount_);
+        //Unstake
+        staking.unstake(xAmount_, false);
+
+        //Receive WXBTRFLY
+        wxbtrfly.transferFrom(msg.sender,address(this),wxAmount_);
+
+        //Unwraps WXBTRFLY and immediately calls burn
+        btrflyv1.burn(xAmount_ + wxbtrfly.unwrapToBTRFLY(wxAmount_));
+
+        //Using burnFrom saves gas (no transferFrom from)
+        btrflyv1.burnFrom(msg.sender,v1Amount_);
+
+        if(rl_) _mintAndLock( recipient_, value);
+
+        //Mint wxAmount via mariposa
+        else mariposa.request( recipient_, value);
     }
 
     /**
