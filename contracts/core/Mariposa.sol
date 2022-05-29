@@ -47,8 +47,8 @@ contract Mariposa is Ownable {
 
     /** 
         @notice Contructor
-        @param _btrfly address  BTRFLY token address
-        @param _supplyCap uint256  Max number of tokens contract can emmit
+        @param  _btrfly     address  BTRFLY token address
+        @param  _supplyCap  uint256  Max number of tokens contract can emmit
      */
     constructor(address _btrfly, uint256 _supplyCap) {
         if (_btrfly == address(0)) revert ZeroAddress();
@@ -60,8 +60,8 @@ contract Mariposa is Ownable {
 
     /** 
         @notice Mints tokens to recipient 
-        @param  recipient address  To recieve minted tokens
-        @param amount uint256  Amount
+        @param  recipient  address  To receive minted tokens
+        @param  amount     uint256  Amount
      */
     function request(address recipient, uint256 amount) external {
         if (!isMinter[msg.sender]) revert NotMinter();
@@ -80,7 +80,7 @@ contract Mariposa is Ownable {
 
     /** 
         @notice Add address to minter role.
-        @param  minter address  Minter address
+        @param  minter  address  Minter address
      */
     function addMinter(address minter) external onlyOwner {
         if (minter == address(0)) revert ZeroAddress();
@@ -94,8 +94,8 @@ contract Mariposa is Ownable {
 
     /** 
         @notice Increase allowance
-        @param  minter address  Address with minting rights
-        @param amount uint256  Amount to decrease
+        @param  minter  address  Address with minting rights
+        @param  amount  uint256  Amount to decrease
      */
     function increaseAllowance(address minter, uint256 amount)
         external
@@ -115,8 +115,8 @@ contract Mariposa is Ownable {
 
     /** 
         @notice Decrease allowance
-        @param  minter address  Address with minting rights
-        @param amount uint256  Amount to decrease
+        @param  minter  address  Address with minting rights
+        @param  amount  uint256  Amount to decrease
      */
     function decreaseAllowance(address minter, uint256 amount)
         external
