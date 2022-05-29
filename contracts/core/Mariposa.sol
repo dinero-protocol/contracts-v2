@@ -47,8 +47,8 @@ contract Mariposa is Ownable {
 
     /** 
         @notice Contructor
-        @param _btrfly     address  BTRFLY token address
-        @param _supplyCap  uint256  Max number of tokens contract can emmit
+        @param _btrfly address  BTRFLY token address
+        @param _supplyCap uint256  Max number of tokens contract can emmit
      */
     constructor(address _btrfly, uint256 _supplyCap) {
         if (_btrfly == address(0)) revert ZeroAddress();
@@ -75,8 +75,8 @@ contract Mariposa is Ownable {
 
     /** 
         @notice Mints tokens to recipient 
-        @param  _recipient  address  To recieve minted tokens
-        @param _amount      uint256  Amount
+        @param  _recipient address  To recieve minted tokens
+        @param _amount uint256  Amount
      */
     function request(address _recipient, uint256 _amount)
         external
@@ -97,7 +97,7 @@ contract Mariposa is Ownable {
 
     /** 
         @notice Add address to minter role.
-        @param  _minter  address  Minter address
+        @param  _minter address  Minter address
      */
     function addMinter(address _minter)
         external
@@ -115,8 +115,8 @@ contract Mariposa is Ownable {
 
     /** 
         @notice Increase allowance
-        @param  _minter  address  Address with minting rights
-        @param _amount     uint256  Amount to decrease
+        @param  _minter address  Address with minting rights
+        @param _amount uint256  Amount to decrease
      */
     function increaseAllowance(address _minter, uint256 _amount)
         external
@@ -136,8 +136,8 @@ contract Mariposa is Ownable {
 
     /** 
         @notice Decrease allowance
-        @param  _minter  address  Address with minting rights
-        @param _amount     uint256  Amount to decrease
+        @param  _minter address  Address with minting rights
+        @param _amount uint256  Amount to decrease
      */
     function decreaseAllowance(address _minter, uint256 _amount)
         external
@@ -155,7 +155,7 @@ contract Mariposa is Ownable {
     }
 
     /** 
-        @notice Emergency method to shutdown the current contract
+        @notice Emergency method to shutdown requests
      */
     function shutdown() external onlyOwner {
         if (isShutdown) revert Closed();
