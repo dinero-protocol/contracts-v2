@@ -25,15 +25,15 @@ contract Mariposa is Ownable {
     mapping(address => bool) public isMinter;
     address[] public minters; // Push only, beware false-positives. Only for viewing.
 
-    event AllowanceSet(address indexed _minter, uint256 _amount);
+    event AllowanceSet(address indexed minter, uint256 amount);
     event Requested(
-        address indexed _minter,
-        address indexed _recipient,
+        address indexed minter,
+        address indexed recipient,
         uint256 amount
     );
-    event AddedMinter(address indexed _minter);
-    event IncreasedAllowance(address indexed _minter, uint256 _amount);
-    event DecreasedAllowance(address indexed _minter, uint256 _amount);
+    event AddedMinter(address indexed minter);
+    event IncreasedAllowance(address indexed minter, uint256 amount);
+    event DecreasedAllowance(address indexed minter, uint256 amount);
     event Shutdown();
 
     error ZeroAddress();
@@ -47,8 +47,8 @@ contract Mariposa is Ownable {
 
     /** 
         @notice Contructor
-        @param _btrfly     address  BTRFLY token address
-        @param _supplyCap  uint256  Max number of tokens contract can emmit
+        @param  _btrfly     address  BTRFLY token address
+        @param  _supplyCap  uint256  Max number of tokens contract can emmit
      */
     constructor(address _btrfly, uint256 _supplyCap) {
         if (_btrfly == address(0)) revert ZeroAddress();
@@ -58,104 +58,83 @@ contract Mariposa is Ownable {
         supplyCap = _supplyCap;
     }
 
-    modifier nonZeroAddress(address _user) {
-        if (_user == address(0)) revert ZeroAddress();
-        _;
-    }
-
-    modifier nonZeroAmount(uint256 _amount) {
-        if (_amount == 0) revert ZeroAmount();
-        _;
-    }
-
-    modifier onlyMinter(address _minter) {
-        if (!isMinter[_minter]) revert NotMinter();
-        _;
-    }
-
     /** 
         @notice Mints tokens to recipient 
-        @param  _recipient  address  To recieve minted tokens
-        @param _amount      uint256  Amount
+        @param  recipient  address  To receive minted tokens
+        @param  amount     uint256  Amount
      */
-    function request(address _recipient, uint256 _amount)
-        external
-        onlyMinter(msg.sender)
-        nonZeroAddress(_recipient)
-        nonZeroAmount(_amount)
-    {
+    function request(address recipient, uint256 amount) external {
+        if (!isMinter[msg.sender]) revert NotMinter();
+        if (amount == 0) revert ZeroAmount();
+        if (recipient == address(0)) revert ZeroAddress();
         if (isShutdown) revert Closed();
-        if (_amount > mintAllowances[msg.sender]) revert ExceedsAllowance();
+        if (amount > mintAllowances[msg.sender]) revert ExceedsAllowance();
 
-        emissions += _amount;
-        mintAllowances[msg.sender] -= _amount;
-        totalAllowances -= _amount;
+        emissions += amount;
+        mintAllowances[msg.sender] -= amount;
+        totalAllowances -= amount;
 
-        btrfly.mint(_recipient, _amount);
-        emit Requested(msg.sender, _recipient, _amount);
+        btrfly.mint(recipient, amount);
+        emit Requested(msg.sender, recipient, amount);
     }
 
     /** 
         @notice Add address to minter role.
-        @param  _minter  address  Minter address
+        @param  minter  address  Minter address
      */
-    function addMinter(address _minter)
-        external
-        onlyOwner
-        nonZeroAddress(_minter)
-    {
-        if (isMinter[_minter]) revert AlreadyAdded();
+    function addMinter(address minter) external onlyOwner {
+        if (minter == address(0)) revert ZeroAddress();
+        if (isMinter[minter]) revert AlreadyAdded();
 
-        isMinter[_minter] = true;
+        isMinter[minter] = true;
+        minters.push(minter);
 
-        minters.push(_minter);
-
-        emit AddedMinter(_minter);
+        emit AddedMinter(minter);
     }
 
     /** 
         @notice Increase allowance
-        @param  _minter  address  Address with minting rights
-        @param _amount     uint256  Amount to decrease
+        @param  minter  address  Address with minting rights
+        @param  amount  uint256  Amount to decrease
      */
-    function increaseAllowance(address _minter, uint256 _amount)
+    function increaseAllowance(address minter, uint256 amount)
         external
         onlyOwner
-        nonZeroAddress(_minter)
-        nonZeroAmount(_amount)
-        onlyMinter(_minter)
     {
-        if (emissions + totalAllowances + _amount > supplyCap)
+        if (minter == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroAmount();
+        if (!isMinter[minter]) revert NotMinter();
+        if (emissions + totalAllowances + amount > supplyCap)
             revert ExceedsSupplyCap();
 
-        totalAllowances += _amount;
-        mintAllowances[_minter] += _amount;
+        totalAllowances += amount;
+        mintAllowances[minter] += amount;
 
-        emit IncreasedAllowance(_minter, _amount);
+        emit IncreasedAllowance(minter, amount);
     }
 
     /** 
         @notice Decrease allowance
-        @param  _minter  address  Address with minting rights
-        @param _amount     uint256  Amount to decrease
+        @param  minter  address  Address with minting rights
+        @param  amount  uint256  Amount to decrease
      */
-    function decreaseAllowance(address _minter, uint256 _amount)
+    function decreaseAllowance(address minter, uint256 amount)
         external
         onlyOwner
-        nonZeroAddress(_minter)
-        nonZeroAmount(_amount)
-        onlyMinter(_minter)
     {
-        if (mintAllowances[_minter] < _amount) revert UnderflowAllowance();
+        if (minter == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroAmount();
+        if (!isMinter[minter]) revert NotMinter();
+        if (mintAllowances[minter] < amount) revert UnderflowAllowance();
 
-        totalAllowances -= _amount;
-        mintAllowances[_minter] -= _amount;
+        totalAllowances -= amount;
+        mintAllowances[minter] -= amount;
 
-        emit DecreasedAllowance(_minter, _amount);
+        emit DecreasedAllowance(minter, amount);
     }
 
     /** 
-        @notice Emergency method to shutdown the current contract
+        @notice Emergency method to shutdown requests
      */
     function shutdown() external onlyOwner {
         if (isShutdown) revert Closed();

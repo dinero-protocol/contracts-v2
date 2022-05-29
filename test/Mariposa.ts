@@ -52,7 +52,7 @@ describe('Mariposa', function () {
         notAdmin.address,
       ]);
       validateEvent(minterEvent, 'AddedMinter(address)', {
-        _minter: notAdmin.address,
+        minter: notAdmin.address,
       });
     });
 
@@ -105,8 +105,8 @@ describe('Mariposa', function () {
         [notAdmin.address, allowance]
       );
       validateEvent(allowanceEvent, 'IncreasedAllowance(address,uint256)', {
-        _minter: notAdmin.address,
-        _amount: allowance,
+        minter: notAdmin.address,
+        amount: allowance,
       });
 
       const allowanceInState = await mariposa.mintAllowances(notAdmin.address);
@@ -173,8 +173,8 @@ describe('Mariposa', function () {
         [alice.address, aliceAllowance]
       );
       validateEvent(allowanceEvent, 'DecreasedAllowance(address,uint256)', {
-        _minter: alice.address,
-        _amount: aliceAllowance,
+        minter: alice.address,
+        amount: aliceAllowance,
       });
 
       const currentAllowance = await mariposa.mintAllowances(alice.address);
@@ -219,8 +219,8 @@ describe('Mariposa', function () {
       );
 
       validateEvent(requestEvent, 'Requested(address,address,uint256)', {
-        _minter: notAdmin.address,
-        _recipient: notAdmin.address,
+        minter: notAdmin.address,
+        recipient: notAdmin.address,
         amount: allowance,
       });
 
