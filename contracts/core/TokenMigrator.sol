@@ -45,7 +45,6 @@ contract TokenMigrator {
         @param mariposa_    address     mariposa contract address
         @param staking_     address     staking contract address
      */
-
     constructor(
         address wxbtrfly_,
         address xbtrfly_,
@@ -74,57 +73,61 @@ contract TokenMigrator {
     }
 
     /**
-        @param wxAmount_    uint256     amount of wxBTRFLY (in wei units) to migrate
-        @param xAmount_     uint256     amount of xBTRFLY (in wei units) to migrate
-        @param v1Amount_    uint256     amount of V1 vanilla BTRFLY (in wei units) to migrate
-        @param recipient_   address     address to recieve V2 BTRFLY (in wei units)
-        @param rl_          bool        whether to revenue lock newly minted V2 BTRFLY
+        @param wxAmount    uint256     amount of wxBTRFLY (in wei units) to migrate
+        @param xAmount     uint256     amount of xBTRFLY (in wei units) to migrate
+        @param v1Amount    uint256     amount of V1 vanilla BTRFLY (in wei units) to migrate
+        @param recipient   address     address to recieve V2 BTRFLY
+        @param rl          bool        whether to revenue lock newly minted V2 BTRFLY
      */
     function migrate(
-        uint256 wxAmount_,
-        uint256 xAmount_,
-        uint256 v1Amount_,
-        address recipient_,
-        bool rl_
+        uint256 wxAmount,
+        uint256 xAmount,
+        uint256 v1Amount,
+        address recipient,
+        bool rl
     ) external returns (uint256 value) {
-        if (recipient_ == address(0)) revert ZeroAddress();
+        if (recipient == address(0)) revert ZeroAddress();
 
-        value = wxAmount_;
-        value += wxbtrfly.wBTRFLYValue(xAmount_);
-        value += wxbtrfly.wBTRFLYValue(v1Amount_);
+        value = wxAmount;
+        value += wxbtrfly.wBTRFLYValue(xAmount);
+        value += wxbtrfly.wBTRFLYValue(v1Amount);
 
         if (value == 0) revert ZeroAmount();
 
-        if (xAmount_ > 0) {
+        if (xAmount > 0) {
             //Receive XBTRFLY
-            xbtrfly.transferFrom(msg.sender, address(this), xAmount_);
+            xbtrfly.transferFrom(msg.sender, address(this), xAmount);
             //Unstake
-            staking.unstake(xAmount_, false);
+            staking.unstake(xAmount, false);
         }
 
         //Receive WXBTRFLY
-        if (wxAmount_ > 0)
-            wxbtrfly.transferFrom(msg.sender, address(this), wxAmount_);
+        if (wxAmount > 0)
+            wxbtrfly.transferFrom(msg.sender, address(this), wxAmount);
 
         //Unwraps WXBTRFLY and immediately calls burn
-        if (xAmount_ > 0 || wxAmount_ > 0)
-            btrflyv1.burn(xAmount_ + wxbtrfly.unwrapToBTRFLY(wxAmount_));
+        if (xAmount > 0 || wxAmount > 0)
+            btrflyv1.burn(xAmount + wxbtrfly.unwrapToBTRFLY(wxAmount));
 
         //Using burnFrom saves gas (no transferFrom from)
-        if (v1Amount_ > 0) btrflyv1.burnFrom(msg.sender, v1Amount_);
+        if (v1Amount > 0) btrflyv1.burnFrom(msg.sender, v1Amount);
 
-        if (rl_)
-            _mintAndLock(recipient_, value);
+        if (rl)
+            _mintAndLock(recipient, value);
 
             //Mint wxAmount via mariposa
-        else mariposa.request(recipient_, value);
+        else mariposa.request(recipient, value);
 
-        emit Migrate(recipient_, msg.sender, rl_, value);
+        emit Migrate(recipient, msg.sender, rl, value);
     }
 
-    function _mintAndLock(address recipient_, uint256 amount_) internal {
-        mariposa.request(address(this), amount_);
-        rlBtrfly.lock(recipient_, amount_);
+    /**
+        @param recipient    address     address to recieve RLBTRFLY
+        @param amount       uint256     amount of BTRFLYV2 to lock (in wei units)
+     */
+    function _mintAndLock(address recipient, uint256 amount) internal {
+        mariposa.request(address(this), amount);
+        rlBtrfly.lock(recipient, amount);
     }
+    
 }
-
