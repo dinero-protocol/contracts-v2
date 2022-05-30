@@ -9,14 +9,15 @@ describe('BTRFLYV2', function(){
     let admin: SignerWithAddress;
     let notAdmin: SignerWithAddress;
     let vault: SignerWithAddress;
-    let btrflyv2: BTRFLYV2;
+    let alice: SignerWithAddress;
+    let btrflyV2: BTRFLYV2;
 
 
     before(async function(){
         
-        ({ btrflyv2 } = this);
+        ({ btrflyV2 } = this);
 
-        [admin, notAdmin, vault] = await ethers.getSigners();
+        [admin, notAdmin, vault, alice] = await ethers.getSigners();
 
     });
 
@@ -24,10 +25,10 @@ describe('BTRFLYV2', function(){
 
         it("Should be initialised correctly", async function(){
 
-            const name = await btrflyv2.name();
-            const symbol = await btrflyv2.symbol();
-            const decimals = await btrflyv2.decimals();
-            const totalSupply = await btrflyv2.totalSupply();
+            const name = await btrflyV2.name();
+            const symbol = await btrflyV2.symbol();
+            const decimals = await btrflyV2.decimals();
+            const totalSupply = await btrflyV2.totalSupply();
 
             expect(name).to.equal('BTRFLY');
             expect(symbol).to.equal('BTRFLY');
@@ -44,27 +45,27 @@ describe('BTRFLYV2', function(){
 
         it("Does not allow non-owner address to set vault", async function(){
 
-            await expect( btrflyv2.connect(notAdmin).setVault(await notAdmin.getAddress() ))
+            await expect( btrflyV2.connect(notAdmin).setVault(notAdmin.address))
             .to.be.revertedWith("Ownable: caller is not the owner");
 
         })
 
         it("Allows owner to set vault", async function(){
 
-            await btrflyv2.connect(admin).setVault(await vault.getAddress());
-            const _vault = await btrflyv2.vault();
+            await btrflyV2.connect(admin).setVault(vault.address);
+            const _vault = await btrflyV2.vault();
 
-            expect(_vault.toLowerCase()).to.equal((await vault.getAddress()).toLowerCase());
+            expect(_vault.toLowerCase()).to.equal((vault.address).toLowerCase());
 
         })
 
         it("Allows vault to mint tokens", async function(){
 
-            await btrflyv2.connect(admin).setVault(await vault.getAddress());
-            await btrflyv2.connect(vault).mint(await notAdmin.getAddress(), toBN(100e18));
+            await btrflyV2.connect(admin).setVault(vault.address);
+            await btrflyV2.connect(vault).mint(alice.address, toBN(100e18));
 
-            const balance = await btrflyv2.balanceOf(await notAdmin.getAddress());
-            const totalSupply = await btrflyv2.totalSupply();
+            const balance = await btrflyV2.balanceOf(alice.address);
+            const totalSupply = await btrflyV2.totalSupply();
 
             expect(balance).to.equal(toBN(100e18));
             expect(totalSupply).to.equal(toBN(200e18));
@@ -73,7 +74,7 @@ describe('BTRFLYV2', function(){
 
         it("Does not allow non-vault address to mint tokens", async function(){
 
-            await expect(btrflyv2.connect(notAdmin).mint(await notAdmin.getAddress(), toBN(100e18)))
+            await expect(btrflyV2.connect(notAdmin).mint(await notAdmin.getAddress(), toBN(100e18)))
             .to.be.revertedWith("NotVault()");
 
         })

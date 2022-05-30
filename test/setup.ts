@@ -10,7 +10,7 @@ let bob: SignerWithAddress;
 let multisig: SignerWithAddress;
 
 const multisigAddress = '0xA52Fd396891E7A74b641a2Cb1A6999Fcf56B077e';
-const adminBtrflyBalance = toBN(100e9);
+const adminBtrflyBalance = toBN(100e18);
 const mariposaCap = ethers.utils.parseEther(toBN(5.2e6).toString()); // 5.2m in 1e18
 
 before(async function () {
@@ -36,9 +36,6 @@ before(async function () {
 
   // Pre-approve for easier and shorter test run
   await btrflyV2.approve(rlBtrfly.address, ethers.constants.MaxUint256);
-
-  // Setup for Mariposa TEST
-  await btrflyV2.setVault(mariposa.address);
 
   this.admin = admin;
   this.notAdmin = notAdmin;

@@ -22,6 +22,9 @@ describe('Mariposa', function () {
   before(async function () {
     ({ admin, notAdmin, alice, bob, btrflyV2, mariposa, mariposaSupplyCap } =
       this);
+
+    // Setup for Mariposa TEST
+    await btrflyV2.setVault(mariposa.address);
   });
 
   describe('constructor', function () {
@@ -98,7 +101,7 @@ describe('Mariposa', function () {
     });
 
     it('should increase allowance', async function () {
-      const allowance = ethers.utils.parseEther(toBN(1000).toString()); // 1000 tokens
+      const allowance = ethers.utils.parseEther("1000"); // 1000 tokens
 
       const allowanceEvent = await callAndReturnEvent(
         mariposa.increaseAllowance,
@@ -211,7 +214,7 @@ describe('Mariposa', function () {
     it('mints requested', async function () {
       const allowance = await mariposa.mintAllowances(notAdmin.address);
       expect(allowance).to.equal(
-        ethers.utils.parseEther(toBN(1000).toString())
+        ethers.utils.parseEther("1000")
       );
       const requestEvent = await callAndReturnEvent(
         mariposa.connect(notAdmin).request,
