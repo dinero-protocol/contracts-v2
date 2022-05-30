@@ -29,8 +29,9 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
 
     /**
         @notice Balance details
-        @param  locked           uint224  Overall locked amount
-        @param  nextUnlockIndex  uint32   Index of earliest next unlock
+        @param  locked           uint224          Overall locked amount
+        @param  nextUnlockIndex  uint32           Index of earliest next unlock
+        @param  lockedBalances   LockedBalance[]  List of locked balances data
      */
     struct Balance {
         uint224 locked;
@@ -38,25 +39,14 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         LockedBalance[] lockedBalances;
     }
 
-    /**
-        @notice Epoch details
-        @param  supply  uint224  Total locked supply in the epoch
-        @param  date    uint32   Timestamp of the epoch
-     */
-    struct Epoch {
-        uint224 supply;
-        uint32 date;
-    }
-
     // 1 epoch = 1 week
-    uint256 public constant WEEK = 604800;
-    // Full lock duration = 16 weeks
-    uint256 public constant LOCK_DURATION = WEEK * 16;
+    uint32 public constant EPOCH_DURATION = 1 weeks;
+    // Full lock duration = 16 epochs
+    uint256 public constant LOCK_DURATION = 16 * EPOCH_DURATION;
 
     ERC20 public immutable btrfly;
 
     uint256 public lockedSupply;
-    Epoch[] public epochs;
 
     mapping(address => Balance) public balances;
 
@@ -66,29 +56,24 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
     string public constant symbol = "rlBTRFLY";
     uint8 public constant decimals = 18;
 
-    error ZeroAddress();
-    error ZeroAmount();
-    error IsShutdown();
-
     event Shutdown();
     event Locked(
         address indexed account,
         uint256 indexed epoch,
-        uint256 amount,
-        bool relock
+        uint256 amount
     );
     event Withdrawn(address indexed account, uint256 amount, bool relock);
 
+    error ZeroAddress();
+    error ZeroAmount();
+    error IsShutdown();
+
     /**
-        @param  _btrfly     address  BTRFLY token address
+        @param  _btrfly  address  BTRFLY token address
      */
     constructor(address _btrfly) {
         if (_btrfly == address(0)) revert ZeroAddress();
         btrfly = ERC20(_btrfly);
-
-        // Setup first epoch record
-        uint256 currentEpoch = (block.timestamp / WEEK) * WEEK;
-        epochs.push(Epoch({supply: 0, date: uint32(currentEpoch)}));
     }
 
     /** 
@@ -104,33 +89,33 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
 
     /** 
         @notice Locked balance of the specified account including those with expired locks
-        @param  _account  address  Account
-        @return amount    uint256  Amount
+        @param  account  address  Account
+        @return amount   uint256  Amount
      */
-    function lockedBalanceOf(address _account)
+    function lockedBalanceOf(address account)
         external
         view
         returns (uint256 amount)
     {
-        return balances[_account].locked;
+        return balances[account].locked;
     }
 
     /** 
         @notice Balance of the specified account by only including tokens in active locks
-        @param  _account  address  Account
-        @return amount    uint256  Amount
+        @param  account  address  Account
+        @return amount   uint256  Amount
      */
-    function balanceOf(address _account)
+    function balanceOf(address account)
         external
         view
         returns (uint256 amount)
     {
         // Using storage as it's actually cheaper than allocating a new memory based variable
-        Balance storage userBalance = balances[_account];
+        Balance storage userBalance = balances[account];
         LockedBalance[] storage locks = userBalance.lockedBalances;
         uint256 nextUnlockIndex = userBalance.nextUnlockIndex;
 
-        amount = balances[_account].locked;
+        amount = balances[account].locked;
 
         uint256 locksLength = locks.length;
 
@@ -144,11 +129,10 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         }
 
         // Remove amount locked in the next epoch
-        uint256 currentEpoch = (block.timestamp / (WEEK)) * (WEEK);
         if (
             locksLength > 0 &&
             uint256(locks[locksLength - 1].unlockTime) - LOCK_DURATION >
-            currentEpoch
+            getCurrentEpoch()
         ) {
             amount -= locks[locksLength - 1].amount;
         }
@@ -157,67 +141,23 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
     }
 
     /** 
-        @notice Balance of the specified account by only including properly locked tokens at the given epoch
-        @param  _epochIndex  uint256  Index of the epoch
-        @param  _account     address  Account
-        @return amount       uint256  Amount
-     */
-    function balanceAtEpochOf(uint256 _epochIndex, address _account)
-        external
-        view
-        returns (uint256 amount)
-    {
-        if (_epochIndex >= epochs.length) return 0;
-
-        LockedBalance[] storage locks = balances[_account].lockedBalances;
-
-        uint256 epochTime = epochs[_epochIndex].date;
-        uint256 cutoffEpoch = epochTime - LOCK_DURATION;
-
-        if (locks.length != 0) {
-            for (uint256 i = locks.length - 1; ; ) {
-                uint256 lockEpoch = uint256(locks[i].unlockTime) -
-                    LOCK_DURATION;
-
-                if (lockEpoch <= epochTime) {
-                    if (lockEpoch > cutoffEpoch) {
-                        amount += locks[i].amount;
-                    } else {
-                        // Stop now as no futher checks matter
-                        break;
-                    }
-                }
-
-                if (i == 0) {
-                    break;
-                } else {
-                    --i;
-                }
-            }
-        }
-
-        return amount;
-    }
-
-    /** 
         @notice Pending locked amount at the specified account
-        @param  _account  address  Account
-        @return amount    uint256  Amount
+        @param  account  address  Account
+        @return amount   uint256  Amount
      */
-    function pendingLockOf(address _account)
+    function pendingLockOf(address account)
         external
         view
         returns (uint256 amount)
     {
-        LockedBalance[] storage locks = balances[_account].lockedBalances;
+        LockedBalance[] storage locks = balances[account].lockedBalances;
 
         uint256 locksLength = locks.length;
-        uint256 currentEpoch = (block.timestamp / WEEK) * WEEK;
 
         if (
             locksLength > 0 &&
             uint256(locks[locksLength - 1].unlockTime) - LOCK_DURATION >
-            currentEpoch
+            getCurrentEpoch()
         ) {
             return locks[locksLength - 1].amount;
         }
@@ -226,110 +166,14 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
     }
 
     /** 
-        @notice Total supply of all properly locked balances at the most recent and eligible epoch
-        @return supply  uint256  Total supply
-     */
-    function totalSupply() external view returns (uint256 supply) {
-        uint256 currentEpoch = (block.timestamp / WEEK) * WEEK;
-        uint256 cutoffEpoch = currentEpoch - LOCK_DURATION;
-        uint256 epochIndex = epochs.length;
-
-        if (uint256(epochs[epochIndex - 1].date) > currentEpoch) {
-            --epochIndex;
-        }
-
-        if (epochIndex != 0) {
-            for (uint256 i = epochIndex - 1; ; ) {
-                Epoch storage e = epochs[i];
-
-                if (uint256(e.date) <= cutoffEpoch) {
-                    break;
-                }
-
-                supply += e.supply;
-
-                if (i == 0) {
-                    break;
-                } else {
-                    --i;
-                }
-            }
-        }
-
-        return supply;
-    }
-
-    /** 
-        @notice Total supply of all properly locked balances at the given epoch
-        @param  _epochIndex  uint256  Index of the epoch
-        @return supply       uint256  Total supply
-     */
-    function totalSupplyAtEpoch(uint256 _epochIndex)
-        external
-        view
-        returns (uint256 supply)
-    {
-        if (_epochIndex >= epochs.length) return 0;
-
-        uint256 epochStart = (uint256(epochs[_epochIndex].date) / WEEK) * WEEK;
-        uint256 cutoffEpoch = epochStart - LOCK_DURATION;
-
-        for (uint256 i = _epochIndex; ; ) {
-            Epoch storage e = epochs[i];
-
-            if (uint256(e.date) <= cutoffEpoch) {
-                break;
-            }
-
-            supply += e.supply;
-
-            if (i == 0) {
-                break;
-            } else {
-                --i;
-            }
-        }
-
-        return supply;
-    }
-
-    /** 
-        @notice Find an epoch index based on the specified timestamp
-        @param  _time  uint256  Timestamp
-        @return epoch  uint256  Epoch index
-     */
-    function findEpochId(uint256 _time) external view returns (uint256 epoch) {
-        uint256 max = epochs.length - 1;
-        uint256 min = 0;
-
-        _time = (_time / WEEK) * WEEK;
-
-        // Perform binary-search for efficient epoch matching
-        while (min < max) {
-            uint256 mid = (min + max + 1) / 2;
-            uint256 midEpochBlock = epochs[mid].date;
-
-            if (midEpochBlock == _time) {
-                return mid;
-            } else if (midEpochBlock < _time) {
-                min = mid;
-            } else {
-                max = mid - 1;
-            }
-        }
-
-        return min;
-    }
-
-    /** 
         @notice Locked balances details for the specifed account
-        @param  _account    address          Account
+        @param  account     address          Account
         @return total       uint256          Total amount
         @return unlockable  uint256          Unlockable amount
         @return locked      uint256          Locked amount
         @return lockData    LockedBalance[]  List of active locks
      */
-    function lockedBalances(address _account)
+    function lockedBalances(address account)
         external
         view
         returns (
@@ -339,7 +183,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
             LockedBalance[] memory lockData
         )
     {
-        Balance storage userBalance = balances[_account];
+        Balance storage userBalance = balances[account];
         LockedBalance[] storage locks = userBalance.lockedBalances;
         uint256 nextUnlockIndex = userBalance.nextUnlockIndex;
         uint256 idx;
@@ -361,75 +205,45 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         return (userBalance.locked, unlockable, locked, lockData);
     }
 
-    /** 
-        @notice Total epoch count
-        @return uint256  Epoch count
+    /**
+        @notice Get current epoch
+        @return uint256  Current epoch
      */
-    function epochCount() external view returns (uint256) {
-        return epochs.length;
-    }
-
-    /** 
-        @notice Perform epoch checkpoint when required
-     */
-    function checkpointEpoch() external {
-        _checkpointEpoch();
-    }
-
-    /** 
-        @notice Insert a new epoch if needed by filling in any gaps
-     */
-    function _checkpointEpoch() internal {
-        // Create the new epoch in the future for new non-active locks
-        uint256 nextEpoch = (block.timestamp / WEEK) * WEEK + WEEK;
-        uint256 epochIndex = epochs.length;
-
-        if (epochs[epochIndex - 1].date < nextEpoch) {
-            // Fill any epoch gaps
-            while (epochs[epochs.length - 1].date != nextEpoch) {
-                uint256 nextEpochDate = uint256(
-                    epochs[epochs.length - 1].date
-                ) + WEEK;
-                epochs.push(Epoch({supply: 0, date: uint32(nextEpochDate)}));
-            }
-        }
+    function getCurrentEpoch() public view returns (uint256) {
+        return (block.timestamp / EPOCH_DURATION) * EPOCH_DURATION;
     }
 
     /** 
         @notice Locked tokens cannot be withdrawn for lockDuration and are eligible to receive stakingReward rewards
-        @param  _account  address  Account
-        @param  _amount   uint256  Amount
+        @param  account  address  Account
+        @param  amount   uint256  Amount
      */
-    function lock(address _account, uint256 _amount) external nonReentrant {
-        btrfly.safeTransferFrom(msg.sender, address(this), _amount);
+    function lock(address account, uint256 amount) external nonReentrant {
+        btrfly.safeTransferFrom(msg.sender, address(this), amount);
 
-        _lock(_account, _amount, false);
+        _lock(account, amount);
     }
 
     /** 
         @notice Perform the actual lock
-        @param  _account    address  Account
-        @param  _amount     uint256  Amount
-        @param  _isRelock   bool     Whether should relock
+        @param  account    address  Account
+        @param  amount     uint256  Amount
      */
     function _lock(
-        address _account,
-        uint256 _amount,
-        bool _isRelock
+        address account,
+        uint256 amount
     ) internal {
-        if (_amount == 0) revert ZeroAmount();
+        if (amount == 0) revert ZeroAmount();
         if (isShutdown) revert IsShutdown();
 
-        Balance storage balance = balances[_account];
+        Balance storage balance = balances[account];
 
-        _checkpointEpoch();
-
-        uint224 lockAmount = uint224(_amount);
+        uint224 lockAmount = uint224(amount);
 
         balance.locked += lockAmount;
         lockedSupply += lockAmount;
 
-        uint256 lockEpoch = (block.timestamp / WEEK) * WEEK + WEEK;
+        uint256 lockEpoch = getCurrentEpoch() + EPOCH_DURATION;
         uint256 unlockTime = lockEpoch + LOCK_DURATION;
         LockedBalance[] storage locks = balance.lockedBalances;
         uint256 idx = locks.length;
@@ -448,26 +262,22 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
             locked.amount += lockAmount;
         }
 
-        // Update epoch supply
-        uint256 epochIndex = epochs.length - 1;
-        epochs[epochIndex].supply += lockAmount;
-
-        emit Locked(_account, lockEpoch, _amount, _isRelock);
+        emit Locked(account, lockEpoch, amount);
     }
 
     /** 
         @notice Withdraw all currently locked tokens where the unlock time has passed
-        @param  _account      address  Account
-        @param  _relock       bool     Whether should relock
-        @param  _withdrawTo   address  Target receiver
+        @param  account      address  Account
+        @param  relock       bool     Whether should relock
+        @param  withdrawTo   address  Target receiver
      */
     function _processExpiredLocks(
-        address _account,
-        bool _relock,
-        address _withdrawTo
+        address account,
+        bool relock,
+        address withdrawTo
     ) internal {
         // Using storage as it's actually cheaper than allocating a new memory based variable
-        Balance storage userBalance = balances[_account];
+        Balance storage userBalance = balances[account];
         LockedBalance[] storage locks = userBalance.lockedBalances;
         uint224 locked;
         uint256 length = locks.length;
@@ -498,31 +308,31 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         userBalance.locked -= locked;
         lockedSupply -= locked;
 
-        emit Withdrawn(_account, locked, _relock);
+        emit Withdrawn(account, locked, relock);
 
         // Relock or return to user
-        if (_relock) {
-            _lock(_withdrawTo, locked, true);
+        if (relock) {
+            _lock(withdrawTo, locked);
         } else {
-            btrfly.safeTransfer(_withdrawTo, locked);
+            btrfly.safeTransfer(withdrawTo, locked);
         }
     }
 
     /** 
         @notice Withdraw expired locks to a different address
-        @param  _to  address  Target receiver
+        @param  to  address  Target receiver
      */
-    function withdrawExpiredLocksTo(address _to) external nonReentrant {
-        if (_to == address(0)) revert ZeroAddress();
+    function withdrawExpiredLocksTo(address to) external nonReentrant {
+        if (to == address(0)) revert ZeroAddress();
 
-        _processExpiredLocks(msg.sender, false, _to);
+        _processExpiredLocks(msg.sender, false, to);
     }
 
     /** 
         @notice Withdraw/relock all currently locked tokens where the unlock time has passed
-        @param  _relock  bool  Whether should relock
+        @param  relock  bool  Whether should relock
      */
-    function processExpiredLocks(bool _relock) external nonReentrant {
-        _processExpiredLocks(msg.sender, _relock, msg.sender);
+    function processExpiredLocks(bool relock) external nonReentrant {
+        _processExpiredLocks(msg.sender, relock, msg.sender);
     }
 }

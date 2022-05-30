@@ -80,3 +80,5 @@ export const getNumberBetweenRange: (min: number, max: number) => number = (
 export const randomNumberBetweenRange = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1) + min);
 };
+
+export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
