@@ -14,9 +14,9 @@ import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
 
 contract BTRFLYV2 is VaultOwned, ERC20("BTRFLY", "BTRFLY", 18) {
     /**
-        @notice externally exposes the _mint method to the vault address
-        @param  to      address  address to receive tokens
-        @param  amount  uint256  amount to mint
+        @notice Externally exposes the _mint method to the vault address
+        @param  to      address  Address to receive tokens
+        @param  amount  uint256  Amount to mint
      */
     function mint(address to, uint256 amount) external onlyVault {
         _mint(to, amount);

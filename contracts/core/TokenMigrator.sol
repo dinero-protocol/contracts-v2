@@ -39,11 +39,11 @@ contract TokenMigrator {
     );
 
     /**
-        @param wxbtrfly_    address     wxbtrfly token address
-        @param xbtrfly_     address     xbtrfly token address
-        @param btrflyv1_    address     btrfly token address
-        @param mariposa_    address     mariposa contract address
-        @param staking_     address     staking contract address
+        @param wxbtrfly_    address     WXBTRFLY token address
+        @param xbtrfly_     address     XBTRFLY token address
+        @param btrflyv1_    address     BTRFLY token address
+        @param mariposa_    address     Mariposa contract address
+        @param staking_     address     Staking contract address
      */
     constructor(
         address wxbtrfly_,
@@ -73,11 +73,11 @@ contract TokenMigrator {
     }
 
     /**
-        @param wxAmount    uint256     amount of wxBTRFLY (in wei units) to migrate
-        @param xAmount     uint256     amount of xBTRFLY (in wei units) to migrate
-        @param v1Amount    uint256     amount of V1 vanilla BTRFLY (in wei units) to migrate
-        @param recipient   address     address to recieve V2 BTRFLY
-        @param rl          bool        whether to revenue lock newly minted V2 BTRFLY
+        @param wxAmount    uint256     Amount of wxBTRFLY (in wei units) to migrate
+        @param xAmount     uint256     Amount of xBTRFLY (in wei units) to migrate
+        @param v1Amount    uint256     Amount of V1 vanilla BTRFLY (in wei units) to migrate
+        @param recipient   address     Address to recieve V2 BTRFLY
+        @param rl          bool        Whether to revenue lock newly minted V2 BTRFLY
      */
     function migrate(
         uint256 wxAmount,
@@ -122,12 +122,11 @@ contract TokenMigrator {
     }
 
     /**
-        @param recipient    address     address to recieve RLBTRFLY
-        @param amount       uint256     amount of BTRFLYV2 to lock (in wei units)
+        @param recipient    address     Address to recieve RLBTRFLY
+        @param amount       uint256     Amount of BTRFLYV2 to lock (in wei units)
      */
     function _mintAndLock(address recipient, uint256 amount) internal {
         mariposa.request(address(this), amount);
         rlBtrfly.lock(recipient, amount);
     }
-    
 }
