@@ -22,6 +22,10 @@ describe('Mariposa', function () {
   before(async function () {
     ({ admin, notAdmin, alice, bob, btrflyV2, mariposa, mariposaSupplyCap } =
       this);
+
+    // Setup for Mariposa TEST
+    await btrflyV2.setVault(mariposa.address);
+
   });
 
   describe('constructor', function () {

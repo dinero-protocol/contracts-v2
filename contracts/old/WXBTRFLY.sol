@@ -22,7 +22,9 @@ interface IERC20 {
      *
      * Emits a {Transfer} event.
      */
-    function transfer(address recipient, uint256 amount) external returns (bool);
+    function transfer(address recipient, uint256 amount)
+        external
+        returns (bool);
 
     /**
      * @dev Returns the remaining number of tokens that `spender` will be
@@ -31,7 +33,10 @@ interface IERC20 {
      *
      * This value changes when {approve} or {transferFrom} are called.
      */
-    function allowance(address owner, address spender) external view returns (uint256);
+    function allowance(address owner, address spender)
+        external
+        view
+        returns (uint256);
 
     /**
      * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
@@ -58,7 +63,11 @@ interface IERC20 {
      *
      * Emits a {Transfer} event.
      */
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) external returns (bool);
 
     /**
      * @dev Emitted when `value` tokens are moved from one account (`from`) to
@@ -72,7 +81,11 @@ interface IERC20 {
      * @dev Emitted when the allowance of a `spender` for an `owner` is set by
      * a call to {approve}. `value` is the new allowance.
      */
-    event Approval(address indexed owner, address indexed spender, uint256 value);
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 value
+    );
 }
 
 /**
@@ -130,7 +143,11 @@ library SafeMath {
      *
      * - Subtraction cannot overflow.
      */
-    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+    function sub(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
         require(b <= a, errorMessage);
         uint256 c = a - b;
 
@@ -189,7 +206,11 @@ library SafeMath {
      *
      * - The divisor cannot be zero.
      */
-    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+    function div(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
         require(b > 0, errorMessage);
         uint256 c = a / b;
         // assert(a == b * c + a % b); // There is no case in which this doesn't hold
@@ -225,12 +246,15 @@ library SafeMath {
      *
      * - The divisor cannot be zero.
      */
-    function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+    function mod(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
         require(b != 0, errorMessage);
         return a % b;
     }
 }
-
 
 /**
  * @dev Collection of functions related to the address type
@@ -260,7 +284,9 @@ library Address {
 
         uint256 size;
         // solhint-disable-next-line no-inline-assembly
-        assembly { size := extcodesize(account) }
+        assembly {
+            size := extcodesize(account)
+        }
         return size > 0;
     }
 
@@ -281,11 +307,17 @@ library Address {
      * https://solidity.readthedocs.io/en/v0.5.11/security-considerations.html#use-the-checks-effects-interactions-pattern[checks-effects-interactions pattern].
      */
     function sendValue(address payable recipient, uint256 amount) internal {
-        require(address(this).balance >= amount, "Address: insufficient balance");
+        require(
+            address(this).balance >= amount,
+            "Address: insufficient balance"
+        );
 
         // solhint-disable-next-line avoid-low-level-calls, avoid-call-value
-        (bool success, ) = recipient.call{ value: amount }("");
-        require(success, "Address: unable to send value, recipient may have reverted");
+        (bool success, ) = recipient.call{value: amount}("");
+        require(
+            success,
+            "Address: unable to send value, recipient may have reverted"
+        );
     }
 
     /**
@@ -306,8 +338,11 @@ library Address {
      *
      * _Available since v3.1._
      */
-    function functionCall(address target, bytes memory data) internal returns (bytes memory) {
-      return functionCall(target, data, "Address: low-level call failed");
+    function functionCall(address target, bytes memory data)
+        internal
+        returns (bytes memory)
+    {
+        return functionCall(target, data, "Address: low-level call failed");
     }
 
     /**
@@ -316,7 +351,11 @@ library Address {
      *
      * _Available since v3.1._
      */
-    function functionCall(address target, bytes memory data, string memory errorMessage) internal returns (bytes memory) {
+    function functionCall(
+        address target,
+        bytes memory data,
+        string memory errorMessage
+    ) internal returns (bytes memory) {
         return _functionCallWithValue(target, data, 0, errorMessage);
     }
 
@@ -331,8 +370,18 @@ library Address {
      *
      * _Available since v3.1._
      */
-    function functionCallWithValue(address target, bytes memory data, uint256 value) internal returns (bytes memory) {
-        return functionCallWithValue(target, data, value, "Address: low-level call with value failed");
+    function functionCallWithValue(
+        address target,
+        bytes memory data,
+        uint256 value
+    ) internal returns (bytes memory) {
+        return
+            functionCallWithValue(
+                target,
+                data,
+                value,
+                "Address: low-level call with value failed"
+            );
     }
 
     /**
@@ -341,16 +390,31 @@ library Address {
      *
      * _Available since v3.1._
      */
-    function functionCallWithValue(address target, bytes memory data, uint256 value, string memory errorMessage) internal returns (bytes memory) {
-        require(address(this).balance >= value, "Address: insufficient balance for call");
+    function functionCallWithValue(
+        address target,
+        bytes memory data,
+        uint256 value,
+        string memory errorMessage
+    ) internal returns (bytes memory) {
+        require(
+            address(this).balance >= value,
+            "Address: insufficient balance for call"
+        );
         return _functionCallWithValue(target, data, value, errorMessage);
     }
 
-    function _functionCallWithValue(address target, bytes memory data, uint256 weiValue, string memory errorMessage) private returns (bytes memory) {
+    function _functionCallWithValue(
+        address target,
+        bytes memory data,
+        uint256 weiValue,
+        string memory errorMessage
+    ) private returns (bytes memory) {
         require(isContract(target), "Address: call to non-contract");
 
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returndata) = target.call{ value: weiValue }(data);
+        (bool success, bytes memory returndata) = target.call{value: weiValue}(
+            data
+        );
         if (success) {
             return returndata;
         } else {
@@ -398,9 +462,9 @@ contract ERC20 is IERC20 {
     using SafeMath for uint256;
     using Address for address;
 
-    mapping (address => uint256) private _balances;
+    mapping(address => uint256) private _balances;
 
-    mapping (address => mapping (address => uint256)) private _allowances;
+    mapping(address => mapping(address => uint256)) private _allowances;
 
     uint256 private _totalSupply;
 
@@ -417,7 +481,7 @@ contract ERC20 is IERC20 {
      * All three of these values are immutable: they can only be set once during
      * construction.
      */
-    constructor (string memory name, string memory symbol) {
+    constructor(string memory name, string memory symbol) {
         _name = name;
         _symbol = symbol;
         _decimals = 18;
@@ -477,7 +541,12 @@ contract ERC20 is IERC20 {
      * - `recipient` cannot be the zero address.
      * - the caller must have a balance of at least `amount`.
      */
-    function transfer(address recipient, uint256 amount) public virtual override returns (bool) {
+    function transfer(address recipient, uint256 amount)
+        public
+        virtual
+        override
+        returns (bool)
+    {
         _transfer(msg.sender, recipient, amount);
         return true;
     }
@@ -485,7 +554,13 @@ contract ERC20 is IERC20 {
     /**
      * @dev See {IERC20-allowance}.
      */
-    function allowance(address owner, address spender) public view virtual override returns (uint256) {
+    function allowance(address owner, address spender)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
         return _allowances[owner][spender];
     }
 
@@ -496,7 +571,12 @@ contract ERC20 is IERC20 {
      *
      * - `spender` cannot be the zero address.
      */
-    function approve(address spender, uint256 amount) public virtual override returns (bool) {
+    function approve(address spender, uint256 amount)
+        public
+        virtual
+        override
+        returns (bool)
+    {
         _approve(msg.sender, spender, amount);
         return true;
     }
@@ -513,9 +593,20 @@ contract ERC20 is IERC20 {
      * - the caller must have allowance for ``sender``'s tokens of at least
      * `amount`.
      */
-    function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) public virtual override returns (bool) {
         _transfer(sender, recipient, amount);
-        _approve(sender, msg.sender, _allowances[sender][msg.sender].sub(amount, "ERC20: transfer amount exceeds allowance"));
+        _approve(
+            sender,
+            msg.sender,
+            _allowances[sender][msg.sender].sub(
+                amount,
+                "ERC20: transfer amount exceeds allowance"
+            )
+        );
         return true;
     }
 
@@ -531,8 +622,16 @@ contract ERC20 is IERC20 {
      *
      * - `spender` cannot be the zero address.
      */
-    function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
-        _approve(msg.sender, spender, _allowances[msg.sender][spender].add(addedValue));
+    function increaseAllowance(address spender, uint256 addedValue)
+        public
+        virtual
+        returns (bool)
+    {
+        _approve(
+            msg.sender,
+            spender,
+            _allowances[msg.sender][spender].add(addedValue)
+        );
         return true;
     }
 
@@ -550,8 +649,19 @@ contract ERC20 is IERC20 {
      * - `spender` must have allowance for the caller of at least
      * `subtractedValue`.
      */
-    function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
-        _approve(msg.sender, spender, _allowances[msg.sender][spender].sub(subtractedValue, "ERC20: decreased allowance below zero"));
+    function decreaseAllowance(address spender, uint256 subtractedValue)
+        public
+        virtual
+        returns (bool)
+    {
+        _approve(
+            msg.sender,
+            spender,
+            _allowances[msg.sender][spender].sub(
+                subtractedValue,
+                "ERC20: decreased allowance below zero"
+            )
+        );
         return true;
     }
 
@@ -569,13 +679,20 @@ contract ERC20 is IERC20 {
      * - `recipient` cannot be the zero address.
      * - `sender` must have a balance of at least `amount`.
      */
-    function _transfer(address sender, address recipient, uint256 amount) internal virtual {
+    function _transfer(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) internal virtual {
         require(sender != address(0), "ERC20: transfer from the zero address");
         require(recipient != address(0), "ERC20: transfer to the zero address");
 
         _beforeTokenTransfer(sender, recipient, amount);
 
-        _balances[sender] = _balances[sender].sub(amount, "ERC20: transfer amount exceeds balance");
+        _balances[sender] = _balances[sender].sub(
+            amount,
+            "ERC20: transfer amount exceeds balance"
+        );
         _balances[recipient] = _balances[recipient].add(amount);
         emit Transfer(sender, recipient, amount);
     }
@@ -615,7 +732,10 @@ contract ERC20 is IERC20 {
 
         _beforeTokenTransfer(account, address(0), amount);
 
-        _balances[account] = _balances[account].sub(amount, "ERC20: burn amount exceeds balance");
+        _balances[account] = _balances[account].sub(
+            amount,
+            "ERC20: burn amount exceeds balance"
+        );
         _totalSupply = _totalSupply.sub(amount);
         emit Transfer(account, address(0), amount);
     }
@@ -633,7 +753,11 @@ contract ERC20 is IERC20 {
      * - `owner` cannot be the zero address.
      * - `spender` cannot be the zero address.
      */
-    function _approve(address owner, address spender, uint256 amount) internal virtual {
+    function _approve(
+        address owner,
+        address spender,
+        uint256 amount
+    ) internal virtual {
         require(owner != address(0), "ERC20: approve from the zero address");
         require(spender != address(0), "ERC20: approve to the zero address");
 
@@ -666,7 +790,11 @@ contract ERC20 is IERC20 {
      *
      * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
      */
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual { }
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual {}
 }
 
 /**
@@ -682,12 +810,27 @@ library SafeERC20 {
     using SafeMath for uint256;
     using Address for address;
 
-    function safeTransfer(IERC20 token, address to, uint256 value) internal {
-        _callOptionalReturn(token, abi.encodeWithSelector(token.transfer.selector, to, value));
+    function safeTransfer(
+        IERC20 token,
+        address to,
+        uint256 value
+    ) internal {
+        _callOptionalReturn(
+            token,
+            abi.encodeWithSelector(token.transfer.selector, to, value)
+        );
     }
 
-    function safeTransferFrom(IERC20 token, address from, address to, uint256 value) internal {
-        _callOptionalReturn(token, abi.encodeWithSelector(token.transferFrom.selector, from, to, value));
+    function safeTransferFrom(
+        IERC20 token,
+        address from,
+        address to,
+        uint256 value
+    ) internal {
+        _callOptionalReturn(
+            token,
+            abi.encodeWithSelector(token.transferFrom.selector, from, to, value)
+        );
     }
 
     /**
@@ -697,25 +840,60 @@ library SafeERC20 {
      * Whenever possible, use {safeIncreaseAllowance} and
      * {safeDecreaseAllowance} instead.
      */
-    function safeApprove(IERC20 token, address spender, uint256 value) internal {
+    function safeApprove(
+        IERC20 token,
+        address spender,
+        uint256 value
+    ) internal {
         // safeApprove should only be called when setting an initial allowance,
         // or when resetting it to zero. To increase and decrease it, use
         // 'safeIncreaseAllowance' and 'safeDecreaseAllowance'
         // solhint-disable-next-line max-line-length
-        require((value == 0) || (token.allowance(address(this), spender) == 0),
+        require(
+            (value == 0) || (token.allowance(address(this), spender) == 0),
             "SafeERC20: approve from non-zero to non-zero allowance"
         );
-        _callOptionalReturn(token, abi.encodeWithSelector(token.approve.selector, spender, value));
+        _callOptionalReturn(
+            token,
+            abi.encodeWithSelector(token.approve.selector, spender, value)
+        );
     }
 
-    function safeIncreaseAllowance(IERC20 token, address spender, uint256 value) internal {
-        uint256 newAllowance = token.allowance(address(this), spender).add(value);
-        _callOptionalReturn(token, abi.encodeWithSelector(token.approve.selector, spender, newAllowance));
+    function safeIncreaseAllowance(
+        IERC20 token,
+        address spender,
+        uint256 value
+    ) internal {
+        uint256 newAllowance = token.allowance(address(this), spender).add(
+            value
+        );
+        _callOptionalReturn(
+            token,
+            abi.encodeWithSelector(
+                token.approve.selector,
+                spender,
+                newAllowance
+            )
+        );
     }
 
-    function safeDecreaseAllowance(IERC20 token, address spender, uint256 value) internal {
-        uint256 newAllowance = token.allowance(address(this), spender).sub(value, "SafeERC20: decreased allowance below zero");
-        _callOptionalReturn(token, abi.encodeWithSelector(token.approve.selector, spender, newAllowance));
+    function safeDecreaseAllowance(
+        IERC20 token,
+        address spender,
+        uint256 value
+    ) internal {
+        uint256 newAllowance = token.allowance(address(this), spender).sub(
+            value,
+            "SafeERC20: decreased allowance below zero"
+        );
+        _callOptionalReturn(
+            token,
+            abi.encodeWithSelector(
+                token.approve.selector,
+                spender,
+                newAllowance
+            )
+        );
     }
 
     /**
@@ -729,63 +907,75 @@ library SafeERC20 {
         // we're implementing it ourselves. We use {Address.functionCall} to perform this call, which verifies that
         // the target address contains contract code and also asserts for success in the low-level call.
 
-        bytes memory returndata = address(token).functionCall(data, "SafeERC20: low-level call failed");
-        if (returndata.length > 0) { // Return data is optional
+        bytes memory returndata = address(token).functionCall(
+            data,
+            "SafeERC20: low-level call failed"
+        );
+        if (returndata.length > 0) {
+            // Return data is optional
             // solhint-disable-next-line max-line-length
-            require(abi.decode(returndata, (bool)), "SafeERC20: ERC20 operation did not succeed");
+            require(
+                abi.decode(returndata, (bool)),
+                "SafeERC20: ERC20 operation did not succeed"
+            );
         }
     }
 }
 
 interface IStaking {
-    function stake( uint _amount, address _recipient ) external returns ( bool );
+    function stake(uint256 _amount, address _recipient) external returns (bool);
 
-    function claim( address recipient ) external;
+    function claim(address recipient) external;
 
-    function unstake( uint _amount, bool _trigger ) external;
+    function unstake(uint256 _amount, bool _trigger) external;
 
-    function index() external view returns ( uint );
+    function index() external view returns (uint256);
 }
 
 interface IxBTRFLY {
-    function balanceForGons( uint gons ) external view returns ( uint );
+    function balanceForGons(uint256 gons) external view returns (uint256);
 
-    function gonsForBalance( uint amount ) external view returns ( uint );
+    function gonsForBalance(uint256 amount) external view returns (uint256);
 }
 
 contract wxBTRFLY is ERC20 {
     using Address for address;
-    using SafeMath for uint;
+    using SafeMath for uint256;
 
     address public immutable staking;
     address public immutable BTRFLY;
     address public immutable xBTRFLY;
 
     //DON'T EVER F***ING CHANGE PLS - thank you :) | DOUBLE CHECK on Etherscan to verify number is correct
-    uint public immutable realINDEX = 23158417847463239084714197001737581570653996933128112807891516 * 1e9; 
+    uint256 public immutable realINDEX =
+        23158417847463239084714197001737581570653996933128112807891516 * 1e9;
 
-    constructor( address _staking, address _BTRFLY, address _xBTRFLY ) ERC20( "wxBTRFLY", "wxBTRFLY" ) {
-        require( _staking != address(0) );
+    constructor(
+        address _staking,
+        address _BTRFLY,
+        address _xBTRFLY
+    ) ERC20("wxBTRFLY", "wxBTRFLY") {
+        require(_staking != address(0));
         staking = _staking;
-        require( _BTRFLY != address(0) );
+        require(_BTRFLY != address(0));
         BTRFLY = _BTRFLY;
-        require( _xBTRFLY != address(0) );
+        require(_xBTRFLY != address(0));
         xBTRFLY = _xBTRFLY;
     }
 
-        /**
+    /**
         @notice stakes BTRFLY and wraps sBTRFLY
         @param _amount uint
         @return uint
      */
-    function wrapFromBTRFLY( uint _amount ) external returns ( uint ) {
-        IERC20( BTRFLY ).transferFrom( msg.sender, address(this), _amount );
-        IERC20( BTRFLY ).approve( staking, _amount ); // stake BTRFLY for sBTRFLY
-        IStaking( staking ).stake( _amount, address(this) );
-        IStaking( staking ).claim(address(this));
+    function wrapFromBTRFLY(uint256 _amount) external returns (uint256) {
+        IERC20(BTRFLY).transferFrom(msg.sender, address(this), _amount);
+        IERC20(BTRFLY).approve(staking, _amount); // stake BTRFLY for sBTRFLY
+        IStaking(staking).stake(_amount, address(this));
+        IStaking(staking).claim(address(this));
 
-        uint value = wBTRFLYValue( _amount );
-        _mint( msg.sender, value );
+        uint256 value = wBTRFLYValue(_amount);
+        _mint(msg.sender, value);
         return value;
     }
 
@@ -794,14 +984,14 @@ contract wxBTRFLY is ERC20 {
         @param _amount uint
         @return uint
      */
-    function unwrapToBTRFLY( uint _amount ) external returns ( uint ) {
-        _burn( msg.sender, _amount );
-        
-        uint value = xBTRFLYValue( _amount );
-        IERC20( xBTRFLY ).approve( staking, value ); // unstake sBTRFLY for BTRFLY
-        IStaking( staking ).unstake( value, false);
+    function unwrapToBTRFLY(uint256 _amount) external returns (uint256) {
+        _burn(msg.sender, _amount);
 
-        IERC20( BTRFLY ).transfer( msg.sender, value );
+        uint256 value = xBTRFLYValue(_amount);
+        IERC20(xBTRFLY).approve(staking, value); // unstake sBTRFLY for BTRFLY
+        IStaking(staking).unstake(value, false);
+
+        IERC20(BTRFLY).transfer(msg.sender, value);
         return value;
     }
 
@@ -810,11 +1000,11 @@ contract wxBTRFLY is ERC20 {
         @param _amount uint
         @return uint
      */
-    function wrapFromxBTRFLY( uint _amount ) external returns ( uint ) {
-        IERC20( xBTRFLY ).transferFrom( msg.sender, address(this), _amount );
-        
-        uint value = wBTRFLYValue( _amount );
-        _mint( msg.sender, value );
+    function wrapFromxBTRFLY(uint256 _amount) external returns (uint256) {
+        IERC20(xBTRFLY).transferFrom(msg.sender, address(this), _amount);
+
+        uint256 value = wBTRFLYValue(_amount);
+        _mint(msg.sender, value);
         return value;
     }
 
@@ -823,11 +1013,11 @@ contract wxBTRFLY is ERC20 {
         @param _amount uint
         @return uint
      */
-    function unwrapToxBTRFLY( uint _amount ) external returns ( uint ) {
-        _burn( msg.sender, _amount );
+    function unwrapToxBTRFLY(uint256 _amount) external returns (uint256) {
+        _burn(msg.sender, _amount);
 
-        uint value = xBTRFLYValue( _amount );
-        IERC20( xBTRFLY ).transfer( msg.sender, value );
+        uint256 value = xBTRFLYValue(_amount);
+        IERC20(xBTRFLY).transfer(msg.sender, value);
         return value;
     }
 
@@ -836,8 +1026,8 @@ contract wxBTRFLY is ERC20 {
         @param _amount uint
         @return uint
      */
-    function xBTRFLYValue( uint _amount ) public view returns ( uint ) {
-        return _amount.mul( realIndex() ).div( 10 ** decimals() );
+    function xBTRFLYValue(uint256 _amount) public view returns (uint256) {
+        return _amount.mul(realIndex()).div(10**decimals());
     }
 
     /**
@@ -845,12 +1035,11 @@ contract wxBTRFLY is ERC20 {
         @param _amount uint
         @return uint
      */
-    function wBTRFLYValue( uint _amount ) public view returns ( uint ) {
-        return _amount.mul( 10 ** decimals() ).div( realIndex() );
+    function wBTRFLYValue(uint256 _amount) public view returns (uint256) {
+        return _amount.mul(10**decimals()).div(realIndex());
     }
 
-    function realIndex() public view returns ( uint ) {
+    function realIndex() public view returns (uint256) {
         return IxBTRFLY(xBTRFLY).balanceForGons(realINDEX);
     }
-
 }
