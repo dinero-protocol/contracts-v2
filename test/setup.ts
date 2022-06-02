@@ -31,7 +31,7 @@ before(async function () {
   ).deploy(btrflyV2.address, mariposaCap);
 
   // Fund the admin address with some BTRFLYV2 for RL TEST
-  await btrflyV2.setVault(admin.address);
+  await btrflyV2.grantRole(await btrflyV2.MINTER_ROLE(), admin.address);
   await btrflyV2.mint(admin.address, adminBtrflyBalance);
 
   // Pre-approve for easier and shorter test run
@@ -46,4 +46,5 @@ before(async function () {
   this.mariposa = mariposa;
   this.mariposaSupplyCap = mariposaCap;
   this.btrflyV2 = btrflyV2;
+  this.zeroAddress = '0x0000000000000000000000000000000000000000';
 });

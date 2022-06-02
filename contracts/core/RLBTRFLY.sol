@@ -105,11 +105,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         @param  account  address  Account
         @return amount   uint256  Amount
      */
-    function balanceOf(address account)
-        external
-        view
-        returns (uint256 amount)
-    {
+    function balanceOf(address account) external view returns (uint256 amount) {
         // Using storage as it's actually cheaper than allocating a new memory based variable
         Balance storage userBalance = balances[account];
         LockedBalance[] storage locks = userBalance.lockedBalances;
@@ -229,10 +225,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         @param  account    address  Account
         @param  amount     uint256  Amount
      */
-    function _lock(
-        address account,
-        uint256 amount
-    ) internal {
+    function _lock(address account, uint256 amount) internal {
         if (amount == 0) revert ZeroAmount();
         if (isShutdown) revert IsShutdown();
 
