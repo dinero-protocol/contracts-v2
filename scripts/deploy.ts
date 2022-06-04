@@ -1,25 +1,55 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional
-// but useful for running the script in a standalone fashion through `node <script>`.
-//
-// When running the script with `npx hardhat run <script>` you'll find the Hardhat
-// Runtime Environment's members available in the global scope.
 import { ethers } from 'hardhat';
+import { toBN } from '../test/helpers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+
 
 async function main() {
-  // Hardhat always runs the compile task when running scripts with its command
-  // line interface.
-  //
-  // If this script is run directly using `node` you may want to call compile
-  // manually to make sure everything is compiled
-  // await hre.run('compile');
 
-  // We get the contract to deploy
-  const Greeter = await ethers.getContractFactory('Greeter');
-  const greeter = await Greeter.deploy('Hello, Hardhat!');
+  const BTRFLYV1ADDRESS = "0xc0d4ceb216b3ba9c3701b291766fdcba977cec3a";
+  const XBTRFLYADDRESS = "0xCC94Faf235cC5D3Bf4bEd3a30db5984306c86aBC";
+  const WXBTRFLYADDRESS = "0x4B16d95dDF1AE4Fe8227ed7B7E80CF13275e61c9";
+  const STAKINGADDRESS = "0xbde4dfb0dbb0dd8833efb6c5bd0ce048c852c487";
 
-  await greeter.deployed();
+  const adminBtrflyBalance = toBN(100e18);
+  const mariposaCap = ethers.utils.parseEther(toBN(5.2e6).toString()); // 5.2m in 1e18
 
-  console.log('Greeter deployed to:', greeter.address);
+  const admin : SignerWithAddress = (await ethers.getSigners())[0] as SignerWithAddress;
+
+  const btrflyV2 = (await (
+    await ethers.getContractFactory('BTRFLYV2')
+  ).deploy());
+
+  const rlBtrfly = await (
+    await ethers.getContractFactory('RLBTRFLY')
+  ).deploy(btrflyV2.address);
+
+  const mariposa = await (
+    await ethers.getContractFactory('Mariposa')
+  ).deploy(btrflyV2.address, mariposaCap);
+
+  const tokenMigrator = await (await ethers.getContractFactory("TokenMigrator")).deploy(
+    WXBTRFLYADDRESS,
+    XBTRFLYADDRESS,
+    btrflyV2.address,
+    BTRFLYV1ADDRESS,
+    mariposa.address,
+    STAKINGADDRESS,
+    rlBtrfly.address
+)
+
+  // Fund the admin address with some BTRFLYV2 for RL TEST
+  await btrflyV2.setVault(admin.address);
+  await btrflyV2.mint(admin.address, adminBtrflyBalance);
+  await btrflyV2.setVault(rlBtrfly.address);
+
+  // Pre-approve for easier and shorter test run
+  await btrflyV2.approve(rlBtrfly.address, ethers.constants.MaxUint256);
+
+  console.log("BTRFLYV2 deployed at : " + btrflyV2.address);
+  console.log("RLBTRFLY deployed at : " + rlBtrfly.address);
+  console.log("Mariposa deployed at : " + mariposa.address);
+  console.log("Token Migrator deployed at : " + tokenMigrator.address);
+
 }
 
 // We recommend this pattern to be able to use async/await everywhere
@@ -28,3 +58,5 @@ main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+
+
