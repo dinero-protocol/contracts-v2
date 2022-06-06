@@ -1,85 +1,83 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { toBN } from './helpers';
+import { toBN, callAndReturnEvent, validateEvent } from './helpers';
 
 import { BTRFLYV2 } from '../typechain';
 
-describe('BTRFLYV2', function(){
-    let admin: SignerWithAddress;
-    let notAdmin: SignerWithAddress;
-    let vault: SignerWithAddress;
-    let alice: SignerWithAddress;
-    let btrflyV2: BTRFLYV2;
+describe('BTRFLYV2', function () {
+  let admin: SignerWithAddress;
+  let notAdmin: SignerWithAddress;
+  let btrflyV2: BTRFLYV2;
+  let zeroAddress: string;
 
+  before(async function () {
+    ({ btrflyV2, zeroAddress } = this);
+    [admin, notAdmin] = await ethers.getSigners();
+  });
 
-    before(async function(){
-        
-        ({ btrflyV2 } = this);
+  describe('initial state', function () {
+    it('Should have initialized state variables', async function () {
+      const MINTER_ROLE = await btrflyV2.MINTER_ROLE();
 
-        [admin, notAdmin, vault, alice] = await ethers.getSigners();
+      expect(ethers.utils.parseBytes32String(MINTER_ROLE)).to.equal(
+        'MINTER_ROLE'
+      );
+    });
+  });
 
+  describe('constructor', function () {
+    it('Should grant admin role', async function () {
+      const hasAdminRole = await btrflyV2.hasRole(
+        await btrflyV2.DEFAULT_ADMIN_ROLE(),
+        admin.address
+      );
+
+      expect(hasAdminRole).to.equal(true);
+    });
+  });
+
+  describe('mint', function () {
+    it('Should revert if caller does not have minter role', async function () {
+      const minterRole = await btrflyV2.MINTER_ROLE();
+      const hasMinterRole = await btrflyV2.hasRole(
+        minterRole,
+        notAdmin.address
+      );
+      const to = notAdmin.address;
+      const amount = 1;
+
+      expect(hasMinterRole).to.equal(false);
+      await expect(
+        btrflyV2.connect(notAdmin).mint(to, amount)
+      ).to.be.revertedWith(
+        `AccessControl: account ${notAdmin.address.toLowerCase()} is missing role ${minterRole}`
+      );
     });
 
-    describe("Intial State", function(){
+    it('Should mint', async function () {
+      const minterRole = await btrflyV2.MINTER_ROLE();
 
-        it("Should be initialised correctly", async function(){
+      await btrflyV2.grantRole(minterRole, notAdmin.address);
 
-            const name = await btrflyV2.name();
-            const symbol = await btrflyV2.symbol();
-            const decimals = await btrflyV2.decimals();
-            const totalSupply = await btrflyV2.totalSupply();
+      const hasMinterRole = await btrflyV2.hasRole(
+        minterRole,
+        notAdmin.address
+      );
+      const to = notAdmin.address;
+      const amount = toBN(1);
+      const mintEvent = await callAndReturnEvent(
+        btrflyV2.connect(notAdmin).mint,
+        [to, amount]
+      );
 
-            expect(name).to.equal('BTRFLY');
-            expect(symbol).to.equal('BTRFLY');
-            expect(decimals).to.equal(18);
+      expect(hasMinterRole).to.equal(true);
 
-            //as per setup.ts
-            expect(totalSupply).to.equal(toBN(100e18));
-
-        })
-
-    })
-
-    describe("Vault / Minting Functionality", async function(){
-
-        it("Does not allow non-owner address to set vault", async function(){
-
-            await expect( btrflyV2.connect(notAdmin).setVault(notAdmin.address))
-            .to.be.revertedWith("Ownable: caller is not the owner");
-
-        })
-
-        it("Allows owner to set vault", async function(){
-
-            await btrflyV2.connect(admin).setVault(vault.address);
-            const _vault = await btrflyV2.vault();
-
-            expect(_vault.toLowerCase()).to.equal((vault.address).toLowerCase());
-
-        })
-
-        it("Allows vault to mint tokens", async function(){
-
-            await btrflyV2.connect(admin).setVault(vault.address);
-            await btrflyV2.connect(vault).mint(alice.address, toBN(100e18));
-
-            const balance = await btrflyV2.balanceOf(alice.address);
-            const totalSupply = await btrflyV2.totalSupply();
-
-            expect(balance).to.equal(toBN(100e18));
-            expect(totalSupply).to.equal(toBN(200e18));
-
-        })
-
-        it("Does not allow non-vault address to mint tokens", async function(){
-
-            await expect(btrflyV2.connect(notAdmin).mint(await notAdmin.getAddress(), toBN(100e18)))
-            .to.be.revertedWith("NotVault()");
-
-        })
-
-    })
-
-})
-
+      validateEvent(mintEvent, 'Transfer(address,address,uint256)', {
+        from: zeroAddress,
+        to: to,
+        amount,
+      });
+    });
+  });
+});

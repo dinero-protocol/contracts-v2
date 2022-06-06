@@ -22,10 +22,6 @@ describe('Mariposa', function () {
   before(async function () {
     ({ admin, notAdmin, alice, bob, btrflyV2, mariposa, mariposaSupplyCap } =
       this);
-
-    // Setup for Mariposa TEST
-    await btrflyV2.setVault(mariposa.address);
-
   });
 
   describe('constructor', function () {
@@ -213,14 +209,20 @@ describe('Mariposa', function () {
     });
 
     it('mints requested', async function () {
+      await btrflyV2.grantRole(await btrflyV2.MINTER_ROLE(), mariposa.address);
+
       const allowance = await mariposa.mintAllowances(notAdmin.address);
+
       expect(allowance).to.equal(
         ethers.utils.parseEther(toBN(1000).toString())
       );
+
+      const btrflyBalanceBefore = await btrflyV2.balanceOf(notAdmin.address);
       const requestEvent = await callAndReturnEvent(
         mariposa.connect(notAdmin).request,
         [notAdmin.address, allowance]
       );
+      const btrflyBalanceAfter = await btrflyV2.balanceOf(notAdmin.address);
 
       validateEvent(requestEvent, 'Requested(address,address,uint256)', {
         minter: notAdmin.address,
@@ -230,7 +232,7 @@ describe('Mariposa', function () {
 
       expect(await mariposa.emissions()).to.equal(allowance);
       expect(await mariposa.mintAllowances(notAdmin.address)).to.equal(toBN(0));
-      expect(await btrflyV2.balanceOf(notAdmin.address)).to.equal(allowance);
+      expect(btrflyBalanceAfter.sub(btrflyBalanceBefore)).to.equal(allowance);
     });
   });
 
