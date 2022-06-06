@@ -77,6 +77,52 @@ contract TokenMigrator {
     }
 
     /**
+        @notice Migrate wxBTRFLY to BTRFLYV2
+        @param  amount     uint256  Amount of wxBTRFLY to convert to BTRFLYV2
+        @param  recipient  address  Address to receive V2 BTRFLY
+        @param  lock       bool     Whether or not to lock
+     */
+    function migrateWxBtrfly(
+        uint256 amount,
+        address recipient,
+        bool lock
+    ) external {
+        if (amount == 0) revert ZeroAmount();
+        if (recipient == address(0)) revert ZeroAddress();
+
+        emit Migrate(recipient, msg.sender, lock, amount);
+
+        uint256 unwrappedAmount = wxBtrfly.xBTRFLYValue(amount);
+
+        // Burn BTRFLY
+        wxBtrfly.transferFrom(msg.sender, address(this), amount);
+        wxBtrfly.unwrapToBTRFLY(amount);
+
+        // Burn the *unwrapped* BTRFLY amount
+        btrfly.burn(wxBtrfly.xBTRFLYValue(amount));
+
+        // Mint BTRFLYV2
+        _mintBtrflyV2(amount, recipient, lock);
+    }
+
+    /**
+        @notice Mint BTRFLYV2 and (optionally) relock
+        @param  amount     uint256  Amount of wxBTRFLY to convert to BTRFLYV2
+        @param  recipient  address  Address to receive V2 BTRFLY
+        @param  lock       bool     Whether or not to lock
+     */
+    function _mintBtrflyV2(
+        uint256 amount,
+        address recipient,
+        bool lock
+    ) internal {
+        // If locking, mint BTRFLYV2 for TokenMigrator, who will lock on behalf of recipient
+        mariposa.request(lock ? address(this) : recipient, amount);
+
+        if (lock) rlBtrfly.lock(recipient, amount);
+    }
+
+    /**
         @param wxAmount    uint256     Amount of wxBTRFLY (in wei units) to migrate
         @param xAmount     uint256     Amount of xBTRFLY (in wei units) to migrate
         @param v1Amount    uint256     Amount of V1 vanilla BTRFLY (in wei units) to migrate
