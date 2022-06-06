@@ -18,6 +18,7 @@ import {
   callAndReturnEvents,
   validateEvent,
 } from './helpers';
+import { BigNumber } from 'ethers';
 
 describe('Token Migrator', function () {
   let admin: SignerWithAddress;
@@ -120,260 +121,101 @@ describe('Token Migrator', function () {
     });
   });
 
-  describe('migrateWxBtrfly', function () {
-    it('Should revert if amount is zero', async function () {
-      const invalidAmount = 0;
-      const recipient = admin.address;
-      const lock = false;
+  describe('migrate', function () {
+    let caller: string;
+    let wxAmount: BigNumber;
+    let xAmount: BigNumber;
+    let v1Amount: BigNumber;
+    let recipient: string;
 
-      await expect(
-        tokenMigrator.migrateWxBtrfly(invalidAmount, recipient, lock)
-      ).to.be.revertedWith('ZeroAmount()');
+    before(async function () {
+      caller = admin.address;
+      wxAmount = toBN(1e18);
+      xAmount = toBN(1e9);
+      v1Amount = toBN(1e9);
+      recipient = admin.address;
+
+      await wxBtrfly.approve(
+        tokenMigrator.address,
+        await wxBtrfly.balanceOf(caller)
+      );
+      await xBtrfly.approve(
+        tokenMigrator.address,
+        await xBtrfly.balanceOf(caller)
+      );
+      await btrfly.approve(
+        tokenMigrator.address,
+        await btrfly.balanceOf(caller)
+      );
     });
 
-    it('Should revert if address is zero address', async function () {
-      const amount = toBN(1e18);
+    describe('Should revert if recipient is zero address', async function () {
       const invalidRecipient = zeroAddress;
       const lock = false;
 
       await expect(
-        tokenMigrator.migrateWxBtrfly(amount, invalidRecipient, lock)
+        tokenMigrator.migrate(wxAmount, xAmount, v1Amount, invalidRecipient, lock)
       ).to.be.revertedWith('ZeroAddress()');
     });
 
-    it('Should migrate wxBTRFLY to BTRFLYV2 without locking', async function () {
-      const caller = admin.address;
-      const amount = toBN(1e18);
-      const recipient = admin.address;
-      const lock = false;
+    it('Should migrate different BTRFLY tokens to BTRFLYV2', async function () {
+      // 50/50 chance of lock being false or true
+      const lock = Math.random() < 0.5 ? false : true;
+
       const wxBtrflyBalanceBefore = await wxBtrfly.balanceOf(caller);
-      const btrflyV2BalanceBefore = await btrflyV2.balanceOf(recipient);
-
-      await wxBtrfly.approve(tokenMigrator.address, amount);
-
-      const [migrateEvent] = await callAndReturnEvents(
-        tokenMigrator.migrateWxBtrfly,
-        [amount, recipient, lock]
-      );
-      const wxBtrflyBalanceAfter = await wxBtrfly.balanceOf(caller);
-      const btrflyV2BalanceAfter = await btrflyV2.balanceOf(recipient);
-      const unwrappedAmount = await wxBtrfly.xBTRFLYValue(amount);
-
-      expect(wxBtrflyBalanceBefore.sub(wxBtrflyBalanceAfter)).to.equal(amount);
-      expect(btrflyV2BalanceAfter.sub(btrflyV2BalanceBefore)).to.equal(amount);
-
-      validateEvent(migrateEvent, 'Migrate(address,address,bool,uint256)', {
-        to: recipient,
-        from: caller,
-        rl: lock,
-        amount: unwrappedAmount,
-      });
-    });
-
-    it('Should migrate wxBTRFLY to BTRFLYV2 with locking', async function () {
-      const caller = admin.address;
-      const amount = toBN(1e18);
-      const recipient = admin.address;
-      const lock = true;
-      const wxBtrflyBalanceBefore = await wxBtrfly.balanceOf(caller);
-      const btrflyV2BalanceBefore = await btrflyV2.balanceOf(recipient);
-      const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(recipient);
-
-      await wxBtrfly.approve(tokenMigrator.address, amount);
-
-      const [migrateEvent] = await callAndReturnEvents(
-        tokenMigrator.migrateWxBtrfly,
-        [amount, recipient, lock]
-      );
-      const wxBtrflyBalanceAfter = await wxBtrfly.balanceOf(caller);
-      const btrflyV2BalanceAfter = await btrflyV2.balanceOf(recipient);
-      const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(recipient);
-      const unwrappedAmount = await wxBtrfly.xBTRFLYValue(amount);
-
-      expect(wxBtrflyBalanceBefore.sub(wxBtrflyBalanceAfter)).to.equal(amount);
-      expect(btrflyV2BalanceAfter).to.equal(btrflyV2BalanceBefore);
-      expect(lockedBalanceAfter.sub(lockedBalanceBefore)).to.equal(amount);
-
-      validateEvent(migrateEvent, 'Migrate(address,address,bool,uint256)', {
-        to: recipient,
-        from: caller,
-        rl: lock,
-        amount: unwrappedAmount,
-      });
-    });
-  });
-
-  describe('migrateXBtrfly', function () {
-    it('Should revert if amount is zero', async function () {
-      const invalidAmount = 0;
-      const recipient = admin.address;
-      const lock = false;
-
-      await expect(
-        tokenMigrator.migrateXBtrfly(invalidAmount, recipient, lock)
-      ).to.be.revertedWith('ZeroAmount()');
-    });
-
-    it('Should revert if address is zero address', async function () {
-      const amount = toBN(1e9);
-      const invalidRecipient = zeroAddress;
-      const lock = false;
-
-      await expect(
-        tokenMigrator.migrateXBtrfly(amount, invalidRecipient, lock)
-      ).to.be.revertedWith('ZeroAddress()');
-    });
-
-    it('Should migrate xBTRFLY to BTRFLYV2 without locking', async function () {
-      const caller = admin.address;
-      const amount = toBN(1e9);
-      const recipient = admin.address;
-      const lock = false;
       const xBtrflyBalanceBefore = await xBtrfly.balanceOf(caller);
-      const btrflyV2BalanceBefore = await btrflyV2.balanceOf(recipient);
-
-      await xBtrfly.approve(tokenMigrator.address, amount);
-
-      const [migrateEvent] = await callAndReturnEvents(
-        tokenMigrator.migrateXBtrfly,
-        [amount, recipient, lock]
-      );
-      const xBtrflyBalanceAfter = await xBtrfly.balanceOf(caller);
-      const btrflyV2BalanceAfter = await btrflyV2.balanceOf(recipient);
-      const wxBtrflyAmount = await wxBtrfly.wBTRFLYValue(amount);
-
-      expect(xBtrflyBalanceBefore.sub(xBtrflyBalanceAfter)).to.equal(amount);
-      expect(btrflyV2BalanceAfter.sub(btrflyV2BalanceBefore)).to.equal(
-        wxBtrflyAmount
-      );
-
-      validateEvent(migrateEvent, 'Migrate(address,address,bool,uint256)', {
-        to: recipient,
-        from: caller,
-        rl: lock,
-        amount,
-      });
-    });
-
-    it('Should migrate xBTRFLY to BTRFLYV2 with locking', async function () {
-      const caller = admin.address;
-      const amount = toBN(1e9);
-      const recipient = admin.address;
-      const lock = true;
-      const xBtrflyBalanceBefore = await xBtrfly.balanceOf(caller);
-      const btrflyV2BalanceBefore = await btrflyV2.balanceOf(recipient);
-      const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(recipient);
-
-      await xBtrfly.approve(tokenMigrator.address, amount);
-
-      const [migrateEvent] = await callAndReturnEvents(
-        tokenMigrator.migrateXBtrfly,
-        [amount, recipient, lock]
-      );
-      const xBtrflyBalanceAfter = await xBtrfly.balanceOf(caller);
-      const btrflyV2BalanceAfter = await btrflyV2.balanceOf(recipient);
-      const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(recipient);
-      const wxBtrflyAmount = await wxBtrfly.wBTRFLYValue(amount);
-
-      expect(xBtrflyBalanceBefore.sub(xBtrflyBalanceAfter)).to.equal(amount);
-      expect(btrflyV2BalanceAfter).to.equal(btrflyV2BalanceBefore);
-      expect(lockedBalanceAfter.sub(lockedBalanceBefore)).to.equal(
-        wxBtrflyAmount
-      );
-
-      validateEvent(migrateEvent, 'Migrate(address,address,bool,uint256)', {
-        to: recipient,
-        from: caller,
-        rl: lock,
-        amount,
-      });
-    });
-  });
-
-  describe('migrateBtrfly', function () {
-    it('Should revert if amount is zero', async function () {
-      const invalidAmount = 0;
-      const recipient = admin.address;
-      const lock = false;
-
-      await expect(
-        tokenMigrator.migrateBtrfly(invalidAmount, recipient, lock)
-      ).to.be.revertedWith('ZeroAmount()');
-    });
-
-    it('Should revert if address is zero address', async function () {
-      const amount = toBN(1e9);
-      const invalidRecipient = zeroAddress;
-      const lock = false;
-
-      await expect(
-        tokenMigrator.migrateBtrfly(amount, invalidRecipient, lock)
-      ).to.be.revertedWith('ZeroAddress()');
-    });
-
-    it('Should migrate BTRFLY to BTRFLYV2 without locking', async function () {
-      const caller = admin.address;
-      const amount = toBN(1e9);
-      const recipient = admin.address;
-      const lock = false;
-      const btrflyBalanceBefore = await btrfly.balanceOf(caller);
-      const btrflyV2BalanceBefore = await btrflyV2.balanceOf(recipient);
-
-      await btrfly.approve(tokenMigrator.address, amount);
-
-      const [migrateEvent] = await callAndReturnEvents(
-        tokenMigrator.migrateBtrfly,
-        [amount, recipient, lock]
-      );
-      const btrflyBalanceAfter = await btrfly.balanceOf(caller);
-      const btrflyV2BalanceAfter = await btrflyV2.balanceOf(recipient);
-      const wxBtrflyAmount = await wxBtrfly.wBTRFLYValue(amount);
-
-      expect(btrflyBalanceBefore.sub(btrflyBalanceAfter)).to.equal(amount);
-      expect(btrflyV2BalanceAfter.sub(btrflyV2BalanceBefore)).to.equal(
-        wxBtrflyAmount
-      );
-
-      validateEvent(migrateEvent, 'Migrate(address,address,bool,uint256)', {
-        to: recipient,
-        from: caller,
-        rl: lock,
-        amount,
-      });
-    });
-
-    it('Should migrate BTRFLY to BTRFLYV2 with locking', async function () {
-      const caller = admin.address;
-      const amount = toBN(1e9);
-      const recipient = admin.address;
-      const lock = true;
       const btrflyBalanceBefore = await btrfly.balanceOf(caller);
       const btrflyV2BalanceBefore = await btrflyV2.balanceOf(recipient);
       const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(recipient);
-
-      await btrfly.approve(tokenMigrator.address, amount);
-
-      const [migrateEvent] = await callAndReturnEvents(
-        tokenMigrator.migrateBtrfly,
-        [amount, recipient, lock]
-      );
+      const [migrateEvent] = await callAndReturnEvents(tokenMigrator.migrate, [
+        wxAmount,
+        xAmount,
+        v1Amount,
+        recipient,
+        lock,
+      ]);
+      const wxBtrflyBalanceAfter = await wxBtrfly.balanceOf(caller);
+      const xBtrflyBalanceAfter = await xBtrfly.balanceOf(caller);
       const btrflyBalanceAfter = await btrfly.balanceOf(caller);
       const btrflyV2BalanceAfter = await btrflyV2.balanceOf(recipient);
       const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(recipient);
-      const wxBtrflyAmount = await wxBtrfly.wBTRFLYValue(amount);
+      const wxBtrflyAmountFromWXBtrfly = wxAmount;
+      const wxBtrflyAmountFromXBtrfly = await wxBtrfly.wBTRFLYValue(xAmount);
+      const wxBtrflyAmountFromBtrfly = await wxBtrfly.wBTRFLYValue(v1Amount);
+      const expectedBtrflyV2MintAmount = wxBtrflyAmountFromWXBtrfly
+        .add(wxBtrflyAmountFromXBtrfly)
+        .add(wxBtrflyAmountFromBtrfly);
 
-      expect(btrflyBalanceBefore.sub(btrflyBalanceAfter)).to.equal(amount);
-      expect(btrflyV2BalanceAfter).to.equal(btrflyV2BalanceBefore);
-      expect(lockedBalanceAfter.sub(lockedBalanceBefore)).to.equal(
-        wxBtrflyAmount
+      expect(wxBtrflyBalanceBefore.sub(wxBtrflyBalanceAfter)).to.equal(
+        wxAmount
       );
+      expect(xBtrflyBalanceBefore.sub(xBtrflyBalanceAfter)).to.equal(xAmount);
+      expect(btrflyBalanceBefore.sub(btrflyBalanceAfter)).to.equal(v1Amount);
 
-      validateEvent(migrateEvent, 'Migrate(address,address,bool,uint256)', {
-        to: recipient,
-        from: caller,
-        rl: lock,
-        amount,
-      });
+      if (!lock) {
+        expect(btrflyV2BalanceAfter.sub(btrflyV2BalanceBefore)).to.equal(
+          expectedBtrflyV2MintAmount
+        );
+        expect(lockedBalanceAfter.sub(lockedBalanceBefore)).to.equal(0);
+      } else {
+        expect(btrflyV2BalanceAfter.sub(btrflyV2BalanceBefore)).to.equal(0);
+        expect(lockedBalanceAfter.sub(lockedBalanceBefore)).to.equal(
+          expectedBtrflyV2MintAmount
+        );
+      }
+
+      validateEvent(
+        migrateEvent,
+        'Migrate(uint256,uint256,uint256,address,bool,address)',
+        {
+          wxAmount,
+          xAmount,
+          v1Amount,
+          recipient,
+          lock,
+          caller,
+        }
+      );
     });
   });
 });
