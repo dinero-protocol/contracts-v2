@@ -289,4 +289,91 @@ describe('Token Migrator', function () {
       });
     });
   });
+
+  describe('migrateBtrfly', function () {
+    it('Should revert if amount is zero', async function () {
+      const invalidAmount = 0;
+      const recipient = admin.address;
+      const lock = false;
+
+      await expect(
+        tokenMigrator.migrateBtrfly(invalidAmount, recipient, lock)
+      ).to.be.revertedWith('ZeroAmount()');
+    });
+
+    it('Should revert if address is zero address', async function () {
+      const amount = toBN(1e9);
+      const invalidRecipient = zeroAddress;
+      const lock = false;
+
+      await expect(
+        tokenMigrator.migrateBtrfly(amount, invalidRecipient, lock)
+      ).to.be.revertedWith('ZeroAddress()');
+    });
+
+    it('Should migrate BTRFLY to BTRFLYV2 without locking', async function () {
+      const caller = admin.address;
+      const amount = toBN(1e9);
+      const recipient = admin.address;
+      const lock = false;
+      const btrflyBalanceBefore = await btrfly.balanceOf(caller);
+      const btrflyV2BalanceBefore = await btrflyV2.balanceOf(recipient);
+
+      await btrfly.approve(tokenMigrator.address, amount);
+
+      const [migrateEvent] = await callAndReturnEvents(
+        tokenMigrator.migrateBtrfly,
+        [amount, recipient, lock]
+      );
+      const btrflyBalanceAfter = await btrfly.balanceOf(caller);
+      const btrflyV2BalanceAfter = await btrflyV2.balanceOf(recipient);
+      const wxBtrflyAmount = await wxBtrfly.wBTRFLYValue(amount);
+
+      expect(btrflyBalanceBefore.sub(btrflyBalanceAfter)).to.equal(amount);
+      expect(btrflyV2BalanceAfter.sub(btrflyV2BalanceBefore)).to.equal(
+        wxBtrflyAmount
+      );
+
+      validateEvent(migrateEvent, 'Migrate(address,address,bool,uint256)', {
+        to: recipient,
+        from: caller,
+        rl: lock,
+        amount,
+      });
+    });
+
+    it('Should migrate BTRFLY to BTRFLYV2 with locking', async function () {
+      const caller = admin.address;
+      const amount = toBN(1e9);
+      const recipient = admin.address;
+      const lock = true;
+      const btrflyBalanceBefore = await btrfly.balanceOf(caller);
+      const btrflyV2BalanceBefore = await btrflyV2.balanceOf(recipient);
+      const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(recipient);
+
+      await btrfly.approve(tokenMigrator.address, amount);
+
+      const [migrateEvent] = await callAndReturnEvents(
+        tokenMigrator.migrateBtrfly,
+        [amount, recipient, lock]
+      );
+      const btrflyBalanceAfter = await btrfly.balanceOf(caller);
+      const btrflyV2BalanceAfter = await btrflyV2.balanceOf(recipient);
+      const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(recipient);
+      const wxBtrflyAmount = await wxBtrfly.wBTRFLYValue(amount);
+
+      expect(btrflyBalanceBefore.sub(btrflyBalanceAfter)).to.equal(amount);
+      expect(btrflyV2BalanceAfter).to.equal(btrflyV2BalanceBefore);
+      expect(lockedBalanceAfter.sub(lockedBalanceBefore)).to.equal(
+        wxBtrflyAmount
+      );
+
+      validateEvent(migrateEvent, 'Migrate(address,address,bool,uint256)', {
+        to: recipient,
+        from: caller,
+        rl: lock,
+        amount,
+      });
+    });
+  });
 });
