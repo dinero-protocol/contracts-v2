@@ -6,7 +6,6 @@ import {
   BTRFLY,
   IERC20,
   WxBTRFLY,
-  IStakingHelper,
   TokenMigrator,
   MockMariposa,
   BTRFLYV2,
@@ -25,16 +24,16 @@ describe('Token Migrator', function () {
   let dao: SignerWithAddress;
   let zeroAddress: string;
   let redactedMultisig: string;
-  let holder: SignerWithAddress;
   let btrfly: BTRFLY;
   let btrflyV2: BTRFLYV2;
   let xBtrfly: IERC20;
   let wxBtrfly: WxBTRFLY;
   let redactedStaking: IStaking;
-  let redactedStakingHelper: IStakingHelper;
   let mariposa: MockMariposa;
   let rlBtrfly: RLBTRFLY;
   let tokenMigrator: TokenMigrator;
+
+  const otherBtrflyAmount = toBN(10e9);
 
   before(async function () {
     ({
@@ -45,10 +44,8 @@ describe('Token Migrator', function () {
       xBtrfly,
       wxBtrfly,
       redactedStaking,
-      redactedStakingHelper,
     } = this);
-
-    [admin, holder] = await ethers.getSigners();
+    [admin] = await ethers.getSigners();
     mariposa = (await (
       await ethers.getContractFactory('MockMariposa')
     ).deploy(btrflyV2.address)) as MockMariposa;
@@ -73,8 +70,6 @@ describe('Token Migrator', function () {
     await btrfly.connect(dao).setVault(admin.address);
     await btrflyV2.grantRole(await btrflyV2.MINTER_ROLE(), mariposa.address);
 
-    const otherBtrflyAmount = toBN(10e9);
-
     // Mint BTRFLY and split between wxBTRFLY and xBTRFLY
     await btrfly.mint(admin.address, toBN(30e9));
     await btrfly.approve(wxBtrfly.address, otherBtrflyAmount);
@@ -82,23 +77,6 @@ describe('Token Migrator', function () {
     await wxBtrfly.wrapFromBTRFLY(otherBtrflyAmount);
     await redactedStaking.stake(otherBtrflyAmount, admin.address);
     await redactedStaking.claim(admin.address);
-
-    // Approve contracts to spend the maximum amount for each token
-    await btrfly
-      .connect(holder)
-      .approve(wxBtrfly.address, ethers.constants.MaxUint256);
-    await btrfly
-      .connect(holder)
-      .approve(redactedStakingHelper.address, ethers.constants.MaxUint256);
-    await btrfly
-      .connect(holder)
-      .approve(tokenMigrator.address, ethers.constants.MaxUint256);
-    await xBtrfly
-      .connect(holder)
-      .approve(tokenMigrator.address, ethers.constants.MaxUint256);
-    await wxBtrfly
-      .connect(holder)
-      .approve(tokenMigrator.address, ethers.constants.MaxUint256);
   });
 
   describe('constructor', function () {
@@ -122,17 +100,15 @@ describe('Token Migrator', function () {
   });
 
   describe('migrate', function () {
+    const wxAmount = toBN(1e18);
+    const xAmount = toBN(1e9);
+    const v1Amount = toBN(1e9);
+
     let caller: string;
-    let wxAmount: BigNumber;
-    let xAmount: BigNumber;
-    let v1Amount: BigNumber;
     let recipient: string;
 
     before(async function () {
       caller = admin.address;
-      wxAmount = toBN(1e18);
-      xAmount = toBN(1e9);
-      v1Amount = toBN(1e9);
       recipient = admin.address;
 
       await wxBtrfly.approve(
@@ -149,12 +125,18 @@ describe('Token Migrator', function () {
       );
     });
 
-    describe('Should revert if recipient is zero address', async function () {
+    it('Should revert if recipient is zero address', async function () {
       const invalidRecipient = zeroAddress;
       const lock = false;
 
       await expect(
-        tokenMigrator.migrate(wxAmount, xAmount, v1Amount, invalidRecipient, lock)
+        tokenMigrator.migrate(
+          wxAmount,
+          xAmount,
+          v1Amount,
+          invalidRecipient,
+          lock
+        )
       ).to.be.revertedWith('ZeroAddress()');
     });
 
@@ -179,12 +161,9 @@ describe('Token Migrator', function () {
       const btrflyBalanceAfter = await btrfly.balanceOf(caller);
       const btrflyV2BalanceAfter = await btrflyV2.balanceOf(recipient);
       const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(recipient);
-      const wxBtrflyAmountFromWXBtrfly = wxAmount;
-      const wxBtrflyAmountFromXBtrfly = await wxBtrfly.wBTRFLYValue(xAmount);
-      const wxBtrflyAmountFromBtrfly = await wxBtrfly.wBTRFLYValue(v1Amount);
-      const expectedBtrflyV2MintAmount = wxBtrflyAmountFromWXBtrfly
-        .add(wxBtrflyAmountFromXBtrfly)
-        .add(wxBtrflyAmountFromBtrfly);
+      const expectedBtrflyV2MintAmount = wxAmount
+        .add(await wxBtrfly.wBTRFLYValue(xAmount))
+        .add(await wxBtrfly.wBTRFLYValue(v1Amount));
 
       expect(wxBtrflyBalanceBefore.sub(wxBtrflyBalanceAfter)).to.equal(
         wxAmount
