@@ -35,7 +35,7 @@ contract TokenMigrator {
         address indexed to,
         address indexed from,
         bool indexed rl,
-        uint256 value
+        uint256 amount
     );
 
     /**
@@ -90,16 +90,16 @@ contract TokenMigrator {
         if (amount == 0) revert ZeroAmount();
         if (recipient == address(0)) revert ZeroAddress();
 
-        emit Migrate(recipient, msg.sender, lock, amount);
-
         uint256 unwrappedAmount = wxBtrfly.xBTRFLYValue(amount);
 
-        // Burn BTRFLY
+        emit Migrate(recipient, msg.sender, lock, unwrappedAmount);
+
+        // Unwrap wxBTRFLY
         wxBtrfly.transferFrom(msg.sender, address(this), amount);
         wxBtrfly.unwrapToBTRFLY(amount);
 
         // Burn the *unwrapped* BTRFLY amount
-        btrfly.burn(wxBtrfly.xBTRFLYValue(amount));
+        btrfly.burn(unwrappedAmount);
 
         // Mint BTRFLYV2
         _mintBtrflyV2(amount, recipient, lock);

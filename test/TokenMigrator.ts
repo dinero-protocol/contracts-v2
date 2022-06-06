@@ -157,6 +157,7 @@ describe('Token Migrator', function () {
       );
       const wxBtrflyBalanceAfter = await wxBtrfly.balanceOf(caller);
       const btrflyV2BalanceAfter = await btrflyV2.balanceOf(recipient);
+      const unwrappedAmount = await wxBtrfly.xBTRFLYValue(amount);
 
       expect(wxBtrflyBalanceBefore.sub(wxBtrflyBalanceAfter)).to.equal(amount);
       expect(btrflyV2BalanceAfter.sub(btrflyV2BalanceBefore)).to.equal(amount);
@@ -165,7 +166,7 @@ describe('Token Migrator', function () {
         to: recipient,
         from: caller,
         rl: lock,
-        value: amount,
+        amount: unwrappedAmount,
       });
     });
 
@@ -187,6 +188,7 @@ describe('Token Migrator', function () {
       const wxBtrflyBalanceAfter = await wxBtrfly.balanceOf(caller);
       const btrflyV2BalanceAfter = await btrflyV2.balanceOf(recipient);
       const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(recipient);
+      const unwrappedAmount = await wxBtrfly.xBTRFLYValue(amount);
 
       expect(wxBtrflyBalanceBefore.sub(wxBtrflyBalanceAfter)).to.equal(amount);
       expect(btrflyV2BalanceAfter).to.equal(btrflyV2BalanceBefore);
@@ -196,7 +198,7 @@ describe('Token Migrator', function () {
         to: recipient,
         from: caller,
         rl: lock,
-        value: amount,
+        amount: unwrappedAmount,
       });
     });
   });
