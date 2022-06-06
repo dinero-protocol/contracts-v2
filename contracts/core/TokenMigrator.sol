@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.12;
 
+import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
 import {IStaking} from "../interfaces/IStaking.sol";
 import {IWXBTRFLY} from "../interfaces/IWXBTRFLY.sol";
-import {IBTRFLYV1} from "../interfaces/IBTRFLYV1.sol";
-import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
+import {IBTRFLY} from "../interfaces/IBTRFLY.sol";
 import {IMariposa} from "../interfaces/IMariposa.sol";
 import {RLBTRFLY} from "./RLBTRFLY.sol";
 
@@ -16,14 +16,14 @@ import {RLBTRFLY} from "./RLBTRFLY.sol";
     Enables users to convert BTRFLY, xBTRFLY & wxBTRFLY to BTRFLYV2, at a rate based on the wxStaking Index.
     Dependent on the contract having a sufficient allowance from Mariposa.
 
-    receives btrfly/xbtrfly/wxbtrfly --> requests wx value for recipient --> unwraps btrfly and burns
+    receives btrfly/xBtrfly/wxBtrfly --> requests wx value for recipient --> unwraps btrfly and burns
 */
 
 contract TokenMigrator {
-    IWXBTRFLY public immutable wxbtrfly;
-    ERC20 public immutable xbtrfly;
-    ERC20 public immutable btrflyv2;
-    IBTRFLYV1 public immutable btrflyv1;
+    IWXBTRFLY public immutable wxBtrfly;
+    ERC20 public immutable xBtrfly;
+    ERC20 public immutable btrflyV2;
+    IBTRFLY public immutable btrfly;
     IMariposa public immutable mariposa;
     IStaking public immutable staking;
     RLBTRFLY public immutable rlBtrfly;
@@ -39,37 +39,41 @@ contract TokenMigrator {
     );
 
     /**
-        @param wxbtrfly_    address     WXBTRFLY token address
-        @param xbtrfly_     address     XBTRFLY token address
-        @param btrflyv1_    address     BTRFLY token address
-        @param mariposa_    address     Mariposa contract address
-        @param staking_     address     Staking contract address
+        @param wxBtrfly_  address  wxBTRFLY token address
+        @param xBtrfly_   address  xBTRFLY token address
+        @param btrflyV2_  address  BTRFLYV2 token address
+        @param btrfly_    address  BTRFLY token address
+        @param mariposa_  address  Mariposa contract address
+        @param staking_   address  Staking contract address
+        @param rlBtrfly_  address  rlBTRFLY token address
      */
     constructor(
-        address wxbtrfly_,
-        address xbtrfly_,
-        address btrflyv2_,
-        address btrflyv1_,
+        address wxBtrfly_,
+        address xBtrfly_,
+        address btrflyV2_,
+        address btrfly_,
         address mariposa_,
         address staking_,
         address rlBtrfly_
     ) {
-        if (wxbtrfly_ == address(0)) revert ZeroAddress();
-        if (xbtrfly_ == address(0)) revert ZeroAddress();
-        if (btrflyv2_ == address(0)) revert ZeroAddress();
-        if (btrflyv1_ == address(0)) revert ZeroAddress();
+        if (wxBtrfly_ == address(0)) revert ZeroAddress();
+        if (xBtrfly_ == address(0)) revert ZeroAddress();
+        if (btrflyV2_ == address(0)) revert ZeroAddress();
+        if (btrfly_ == address(0)) revert ZeroAddress();
         if (mariposa_ == address(0)) revert ZeroAddress();
         if (staking_ == address(0)) revert ZeroAddress();
         if (rlBtrfly_ == address(0)) revert ZeroAddress();
-        wxbtrfly = IWXBTRFLY(wxbtrfly_);
-        xbtrfly = ERC20(xbtrfly_);
-        btrflyv2 = ERC20(btrflyv2_);
-        btrflyv1 = IBTRFLYV1(btrflyv1_);
+
+        wxBtrfly = IWXBTRFLY(wxBtrfly_);
+        xBtrfly = ERC20(xBtrfly_);
+        btrflyV2 = ERC20(btrflyV2_);
+        btrfly = IBTRFLY(btrfly_);
         mariposa = IMariposa(mariposa_);
         staking = IStaking(staking_);
         rlBtrfly = RLBTRFLY(rlBtrfly_);
-        xbtrfly.approve(staking_, 2**256 - 1);
-        btrflyv2.approve(rlBtrfly_, 2**256 - 1);
+
+        xBtrfly.approve(staking_, type(uint256).max);
+        btrflyV2.approve(rlBtrfly_, type(uint256).max);
     }
 
     /**
@@ -89,28 +93,28 @@ contract TokenMigrator {
         if (recipient == address(0)) revert ZeroAddress();
 
         value = wxAmount;
-        value += wxbtrfly.wBTRFLYValue(xAmount);
-        value += wxbtrfly.wBTRFLYValue(v1Amount);
+        value += wxBtrfly.wBTRFLYValue(xAmount);
+        value += wxBtrfly.wBTRFLYValue(v1Amount);
 
         if (value == 0) revert ZeroAmount();
 
         if (xAmount > 0) {
             //Receive XBTRFLY
-            xbtrfly.transferFrom(msg.sender, address(this), xAmount);
+            xBtrfly.transferFrom(msg.sender, address(this), xAmount);
             //Unstake
             staking.unstake(xAmount, false);
         }
 
         //Receive WXBTRFLY
         if (wxAmount > 0)
-            wxbtrfly.transferFrom(msg.sender, address(this), wxAmount);
+            wxBtrfly.transferFrom(msg.sender, address(this), wxAmount);
 
         //Unwraps WXBTRFLY and immediately calls burn
         if (xAmount > 0 || wxAmount > 0)
-            btrflyv1.burn(xAmount + wxbtrfly.unwrapToBTRFLY(wxAmount));
+            btrfly.burn(xAmount + wxBtrfly.unwrapToBTRFLY(wxAmount));
 
         //Using burnFrom saves gas (no transferFrom from)
-        if (v1Amount > 0) btrflyv1.burnFrom(msg.sender, v1Amount);
+        if (v1Amount > 0) btrfly.burnFrom(msg.sender, v1Amount);
 
         if (rl)
             _mintAndLock(recipient, value);

@@ -10,6 +10,7 @@ import {
   TokenMigrator,
   MockMariposa,
   BTRFLYV2,
+  IStaking,
 } from '../typechain';
 import {
   toBN,
@@ -19,124 +20,92 @@ import {
 } from './helpers';
 
 describe('Token Migrator', function () {
-  const BTRFLYV1ADDRESS = '0xc0d4ceb216b3ba9c3701b291766fdcba977cec3a';
-  const XBTRFLYADDRESS = '0xCC94Faf235cC5D3Bf4bEd3a30db5984306c86aBC';
-  const WXBTRFLYADDRESS = '0x4B16d95dDF1AE4Fe8227ed7B7E80CF13275e61c9';
-  const STAKINGADDRESS = '0xbde4dfb0dbb0dd8833efb6c5bd0ce048c852c487';
-  const STAKINGHELPERADDRESS = '0xC0840Ec5527d3e70d66AE6575642916F3Fd18aDf';
-  const DAOADDRESS = '0xA52Fd396891E7A74b641a2Cb1A6999Fcf56B077e';
-
   let admin: SignerWithAddress;
   let dao: SignerWithAddress;
-
+  let redactedMultisig: string;
   let holder: SignerWithAddress;
   let receiver: SignerWithAddress;
-
-  let btrflyv1: BTRFLY;
+  let btrfly: BTRFLY;
   let btrflyV2: BTRFLYV2;
-  let xbtrfly: IERC20;
-  let wxbtrfly: IWXBTRFLY;
-
-  let stakingHelper: IStakingHelper;
+  let xBtrfly: IERC20;
+  let wxBtrfly: IWXBTRFLY;
+  let redactedStaking: IStaking;
+  let redactedStakingHelper: IStakingHelper;
   let mariposa: MockMariposa;
   let rlBtrfly: RLBTRFLY;
   let tokenMigrator: TokenMigrator;
 
   beforeEach(async function () {
-    ({ btrflyV2 } = this);
+    ({
+      redactedMultisig,
+      btrfly,
+      btrflyV2,
+      xBtrfly,
+      wxBtrfly,
+      redactedStaking,
+      redactedStakingHelper,
+    } = this);
 
     [admin, holder, receiver] = await ethers.getSigners();
     mariposa = (await (
       await ethers.getContractFactory('MockMariposa')
     ).deploy(btrflyV2.address)) as MockMariposa;
-
     rlBtrfly = (await (
       await ethers.getContractFactory('RLBTRFLY')
     ).deploy(btrflyV2.address)) as RLBTRFLY;
-
     tokenMigrator = (await (
       await ethers.getContractFactory('TokenMigrator')
     ).deploy(
-      WXBTRFLYADDRESS,
-      XBTRFLYADDRESS,
+      wxBtrfly.address,
+      xBtrfly.address,
       btrflyV2.address,
-      BTRFLYV1ADDRESS,
+      btrfly.address,
       mariposa.address,
-      STAKINGADDRESS,
+      redactedStaking.address,
       rlBtrfly.address
     )) as TokenMigrator;
 
-    // - impersonate dao
-    dao = await impersonateAddressAndReturnSigner(admin, DAOADDRESS);
+    // Use Redacted multisig as signer
+    dao = await impersonateAddressAndReturnSigner(admin, redactedMultisig);
 
-    // - fetch btrflyv1 token
-    btrflyv1 = (await ethers.getContractAt(
-      'BTRFLY',
-      BTRFLYV1ADDRESS
-    )) as BTRFLY;
-
-    // - fetch wxbtrfly
-    wxbtrfly = (await ethers.getContractAt(
-      'IWXBTRFLY',
-      WXBTRFLYADDRESS
-    )) as IWXBTRFLY;
-
-    // - fetch xbtrfly
-    xbtrfly = (await ethers.getContractAt(
-      '@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20',
-      XBTRFLYADDRESS
-    )) as IERC20;
-
-    // - fetch staking helper contract
-    stakingHelper = (await ethers.getContractAt(
-      'IStakingHelper',
-      STAKINGHELPERADDRESS
-    )) as IStakingHelper;
-
-    await btrflyv1.connect(dao).setVault(admin.address);
+    await btrfly.connect(dao).setVault(admin.address);
     await btrflyV2.grantRole(await btrflyV2.MINTER_ROLE(), mariposa.address);
 
-    // - blanket approvals for all contracts
-    await btrflyv1
+    // Approve contracts to spend the maximum amount for each token
+    await btrfly
       .connect(holder)
-      .approve(wxbtrfly.address, ethers.constants.MaxUint256);
-    await btrflyv1
+      .approve(wxBtrfly.address, ethers.constants.MaxUint256);
+    await btrfly
       .connect(holder)
-      .approve(stakingHelper.address, ethers.constants.MaxUint256);
-    await btrflyv1
-      .connect(holder)
-      .approve(tokenMigrator.address, ethers.constants.MaxUint256);
-    await xbtrfly
+      .approve(redactedStakingHelper.address, ethers.constants.MaxUint256);
+    await btrfly
       .connect(holder)
       .approve(tokenMigrator.address, ethers.constants.MaxUint256);
-    await wxbtrfly
+    await xBtrfly
+      .connect(holder)
+      .approve(tokenMigrator.address, ethers.constants.MaxUint256);
+    await wxBtrfly
       .connect(holder)
       .approve(tokenMigrator.address, ethers.constants.MaxUint256);
   });
 
   describe('constructor', function () {
     it('Initialises contract state correctly', async function () {
-      const _wxbtrflyAddress = await tokenMigrator.wxbtrfly();
-      const _xbtrflyAddress = await tokenMigrator.xbtrfly();
-      const _btrflyv1Address = await tokenMigrator.btrflyv1();
-      const _mariposaAddress = await tokenMigrator.mariposa();
-      const _stakingAddress = await tokenMigrator.staking();
+      const wxBtrflyAddress = await tokenMigrator.wxBtrfly();
+      const xBtrflyAddress = await tokenMigrator.xBtrfly();
+      const btrflyV2Address = await tokenMigrator.btrflyV2();
+      const btrflyAddress = await tokenMigrator.btrfly();
+      const mariposaAddress = await tokenMigrator.mariposa();
+      const stakingAddress = await tokenMigrator.staking();
+      const rlBtrflyAddress = await tokenMigrator.rlBtrfly();
 
-      expect(_wxbtrflyAddress.toLowerCase()).to.equal(
-        WXBTRFLYADDRESS.toLowerCase()
-      );
-      expect(_xbtrflyAddress.toLowerCase()).to.equal(
-        XBTRFLYADDRESS.toLowerCase()
-      );
-      expect(_btrflyv1Address.toLowerCase()).to.equal(
-        BTRFLYV1ADDRESS.toLowerCase()
-      );
-      expect(_mariposaAddress.toLowerCase()).to.equal(
-        mariposa.address.toLowerCase()
-      );
-      expect(_stakingAddress.toLowerCase()).to.equal(
-        STAKINGADDRESS.toLowerCase()
-      );
+      expect(wxBtrflyAddress).to.equal(wxBtrfly.address);
+      expect(xBtrflyAddress).to.equal(xBtrfly.address);
+      expect(btrflyV2Address).to.equal(btrflyV2.address);
+      expect(btrflyAddress).to.equal(btrfly.address);
+      expect(mariposaAddress).to.equal(mariposa.address);
+      expect(stakingAddress).to.equal(redactedStaking.address);
+      expect(rlBtrflyAddress).to.equal(rlBtrfly.address);
     });
   });
 
@@ -164,15 +133,12 @@ describe('Token Migrator', function () {
     it('Returns the correct migrated value', async function () {
       const holderAddress = holder.address;
 
-      await btrflyv1.mint(
-        holderAddress,
-        ethers.utils.parseUnits('1000', 'gwei')
-      );
-      await wxbtrfly
+      await btrfly.mint(holderAddress, ethers.utils.parseUnits('1000', 'gwei'));
+      await wxBtrfly
         .connect(holder)
         .wrapFromBTRFLY(ethers.utils.parseUnits('1000', 'gwei'));
 
-      const balanceWx = await wxbtrfly.balanceOf(await holder.getAddress());
+      const balanceWx = await wxBtrfly.balanceOf(await holder.getAddress());
 
       const migrateEvent = await callAndReturnEvent(
         tokenMigrator.connect(holder).migrate,
@@ -207,34 +173,28 @@ describe('Token Migrator', function () {
 
     it("Decrements user's WXBTRFLY balance", async function () {
       const holderAddress = holder.address;
-      await btrflyv1.mint(
-        holderAddress,
-        ethers.utils.parseUnits('1000', 'gwei')
-      );
-      await wxbtrfly
+      await btrfly.mint(holderAddress, ethers.utils.parseUnits('1000', 'gwei'));
+      await wxBtrfly
         .connect(holder)
         .wrapFromBTRFLY(ethers.utils.parseUnits('1000', 'gwei'));
-      const balanceWx = await wxbtrfly.balanceOf(await holder.getAddress());
+      const balanceWx = await wxBtrfly.balanceOf(await holder.getAddress());
 
       await tokenMigrator
         .connect(holder)
         .migrate(balanceWx, '0', '0', holderAddress, false);
 
-      expect(await wxbtrfly.balanceOf(holderAddress)).to.equal(toBN(0));
+      expect(await wxBtrfly.balanceOf(holderAddress)).to.equal(toBN(0));
     });
   });
 
   describe('XBTRFLY --> BTRFLYV2', function () {
     it('Returns the correct migrated value', async function () {
       const holderAddress = holder.address;
-      await btrflyv1.mint(
-        holderAddress,
-        ethers.utils.parseUnits('1000', 'gwei')
-      );
-      await stakingHelper
+      await btrfly.mint(holderAddress, ethers.utils.parseUnits('1000', 'gwei'));
+      await redactedStakingHelper
         .connect(holder)
         .stake(ethers.utils.parseUnits('1000', 'gwei'));
-      const valueWx = await wxbtrfly.wBTRFLYValue(
+      const valueWx = await wxBtrfly.wBTRFLYValue(
         ethers.utils.parseUnits('1000', 'gwei')
       );
 
@@ -277,11 +237,8 @@ describe('Token Migrator', function () {
 
     it("Decrements user's XBTRFLY balance", async function () {
       const holderAddress = holder.address;
-      await btrflyv1.mint(
-        holderAddress,
-        ethers.utils.parseUnits('1000', 'gwei')
-      );
-      await stakingHelper
+      await btrfly.mint(holderAddress, ethers.utils.parseUnits('1000', 'gwei'));
+      await redactedStakingHelper
         .connect(holder)
         .stake(ethers.utils.parseUnits('1000', 'gwei'));
 
@@ -295,18 +252,15 @@ describe('Token Migrator', function () {
           false
         );
 
-      expect(await xbtrfly.balanceOf(holderAddress)).to.equal(toBN(0));
+      expect(await xBtrfly.balanceOf(holderAddress)).to.equal(toBN(0));
     });
   });
 
   describe('BTRFLYV1 --> BTRFLYV2', async function () {
     it('Returns the correct migrated value', async function () {
       const holderAddress = holder.address;
-      await btrflyv1.mint(
-        holderAddress,
-        ethers.utils.parseUnits('1000', 'gwei')
-      );
-      const valueWx = await wxbtrfly.wBTRFLYValue(
+      await btrfly.mint(holderAddress, ethers.utils.parseUnits('1000', 'gwei'));
+      const valueWx = await wxBtrfly.wBTRFLYValue(
         ethers.utils.parseUnits('1000', 'gwei')
       );
 
@@ -349,10 +303,7 @@ describe('Token Migrator', function () {
 
     it("Decrements user's BTRFLYV1 balance", async function () {
       const holderAddress = holder.address;
-      await btrflyv1.mint(
-        holderAddress,
-        ethers.utils.parseUnits('1000', 'gwei')
-      );
+      await btrfly.mint(holderAddress, ethers.utils.parseUnits('1000', 'gwei'));
 
       await tokenMigrator
         .connect(holder)
@@ -364,7 +315,7 @@ describe('Token Migrator', function () {
           false
         );
 
-      const holderV1BalancePost = await btrflyv1.balanceOf(holderAddress);
+      const holderV1BalancePost = await btrfly.balanceOf(holderAddress);
 
       expect(holderV1BalancePost).to.equal(toBN(0));
     });
@@ -373,17 +324,14 @@ describe('Token Migrator', function () {
   describe('Multiple Token Migration', async function () {
     it('Returns correct value for all multiple token migration permutations', async function () {
       const holderAddress = holder.address;
-      await btrflyv1.mint(
-        holderAddress,
-        ethers.utils.parseUnits('9000', 'gwei')
-      );
-      await stakingHelper
+      await btrfly.mint(holderAddress, ethers.utils.parseUnits('9000', 'gwei'));
+      await redactedStakingHelper
         .connect(holder)
         .stake(ethers.utils.parseUnits('3000', 'gwei'));
-      await wxbtrfly
+      await wxBtrfly
         .connect(holder)
         .wrapFromBTRFLY(ethers.utils.parseUnits('3000', 'gwei'));
-      const valueWxBase = await wxbtrfly.wBTRFLYValue(
+      const valueWxBase = await wxBtrfly.wBTRFLYValue(
         ethers.utils.parseUnits('1000', 'gwei')
       );
 
@@ -480,32 +428,29 @@ describe('Token Migrator', function () {
   describe('Minting BTRFLYV2', function () {
     it('Mints amount equal to value returned by function', async function () {
       const holderAddress = holder.address;
-      
-      await btrflyv1.mint(
-        holderAddress,
-        ethers.utils.parseUnits('3000', 'gwei')
-      );
-      await stakingHelper
+
+      await btrfly.mint(holderAddress, ethers.utils.parseUnits('3000', 'gwei'));
+      await redactedStakingHelper
         .connect(holder)
         .stake(ethers.utils.parseUnits('1000', 'gwei'));
-      await wxbtrfly
+      await wxBtrfly
         .connect(holder)
         .wrapFromBTRFLY(ethers.utils.parseUnits('1000', 'gwei'));
 
       const btrflyV2BalanceBefore = await btrflyV2.balanceOf(holderAddress);
-      const btrflyBalance = await btrflyv1.balanceOf(holderAddress);
-      const xbtrflyBalance = await xbtrfly.balanceOf(holderAddress);
-      const wxbtrflyBalance = await wxbtrfly.balanceOf(holderAddress);
+      const btrflyBalance = await btrfly.balanceOf(holderAddress);
+      const xBtrflyBalance = await xBtrfly.balanceOf(holderAddress);
+      const wxBtrflyBalance = await wxBtrfly.balanceOf(holderAddress);
       const valueWxBase = (
-        await wxbtrfly.wBTRFLYValue(btrflyBalance.add(xbtrflyBalance))
-      ).add(wxbtrflyBalance);
+        await wxBtrfly.wBTRFLYValue(btrflyBalance.add(xBtrflyBalance))
+      ).add(wxBtrflyBalance);
 
       await tokenMigrator
         .connect(holder)
         .migrate(
-          await wxbtrfly.balanceOf(holderAddress),
-          await xbtrfly.balanceOf(holderAddress),
-          await btrflyv1.balanceOf(holderAddress),
+          await wxBtrfly.balanceOf(holderAddress),
+          await xBtrfly.balanceOf(holderAddress),
+          await btrfly.balanceOf(holderAddress),
           holderAddress,
           false
         );
@@ -518,17 +463,14 @@ describe('Token Migrator', function () {
 
     it('Mints tokens to correct recipient', async function () {
       const holderAddress = holder.address;
-      await btrflyv1.mint(
-        holderAddress,
-        ethers.utils.parseUnits('3000', 'gwei')
-      );
-      await stakingHelper
+      await btrfly.mint(holderAddress, ethers.utils.parseUnits('3000', 'gwei'));
+      await redactedStakingHelper
         .connect(holder)
         .stake(ethers.utils.parseUnits('1000', 'gwei'));
-      await wxbtrfly
+      await wxBtrfly
         .connect(holder)
         .wrapFromBTRFLY(ethers.utils.parseUnits('1000', 'gwei'));
-      const valueWxBase = await wxbtrfly.wBTRFLYValue(
+      const valueWxBase = await wxBtrfly.wBTRFLYValue(
         ethers.utils.parseUnits('1000', 'gwei')
       );
 
@@ -560,20 +502,17 @@ describe('Token Migrator', function () {
     });
 
     it('Burns BTRFLYV1 Tokens', async function () {
-      const btrflyV1SupplyPre = await btrflyv1.totalSupply();
+      const btrflyV1SupplyPre = await btrfly.totalSupply();
 
       const holderAddress = holder.address;
-      await btrflyv1.mint(
-        holderAddress,
-        ethers.utils.parseUnits('3000', 'gwei')
-      );
-      await stakingHelper
+      await btrfly.mint(holderAddress, ethers.utils.parseUnits('3000', 'gwei'));
+      await redactedStakingHelper
         .connect(holder)
         .stake(ethers.utils.parseUnits('1000', 'gwei'));
-      await wxbtrfly
+      await wxBtrfly
         .connect(holder)
         .wrapFromBTRFLY(ethers.utils.parseUnits('1000', 'gwei'));
-      const valueWxBase = await wxbtrfly.wBTRFLYValue(
+      const valueWxBase = await wxBtrfly.wBTRFLYValue(
         ethers.utils.parseUnits('1000', 'gwei')
       );
 
@@ -587,10 +526,10 @@ describe('Token Migrator', function () {
           false
         );
 
-      expect((await btrflyv1.totalSupply()).div(toBN(10))).to.equal(
+      expect((await btrfly.totalSupply()).div(toBN(10))).to.equal(
         btrflyV1SupplyPre.div(toBN(10))
       );
-      expect(await btrflyv1.balanceOf(tokenMigrator.address)).to.equal(toBN(0));
+      expect(await btrfly.balanceOf(tokenMigrator.address)).to.equal(toBN(0));
     });
 
     it('Locks tokens when rl is set to True', async function () {
@@ -600,17 +539,14 @@ describe('Token Migrator', function () {
         toBN(0)
       );
 
-      await btrflyv1.mint(
-        holderAddress,
-        ethers.utils.parseUnits('6000', 'gwei')
-      );
-      await stakingHelper
+      await btrfly.mint(holderAddress, ethers.utils.parseUnits('6000', 'gwei'));
+      await redactedStakingHelper
         .connect(holder)
         .stake(ethers.utils.parseUnits('2000', 'gwei'));
-      await wxbtrfly
+      await wxBtrfly
         .connect(holder)
         .wrapFromBTRFLY(ethers.utils.parseUnits('2000', 'gwei'));
-      const valueWxBase = await wxbtrfly.wBTRFLYValue(
+      const valueWxBase = await wxBtrfly.wBTRFLYValue(
         ethers.utils.parseUnits('1000', 'gwei')
       );
 
