@@ -98,11 +98,38 @@ contract TokenMigrator {
         wxBtrfly.transferFrom(msg.sender, address(this), amount);
         wxBtrfly.unwrapToBTRFLY(amount);
 
-        // Burn the *unwrapped* BTRFLY amount
+        // Burn BTRFLY
         btrfly.burn(unwrappedAmount);
 
         // Mint BTRFLYV2
         _mintBtrflyV2(amount, recipient, lock);
+    }
+
+    /**
+        @notice Migrate xBTRFLY to BTRFLYV2
+        @param  amount     uint256  Amount of xBTRFLY to convert to BTRFLYV2
+        @param  recipient  address  Address to receive V2 BTRFLY
+        @param  lock       bool     Whether or not to lock
+     */
+    function migrateXBtrfly(
+        uint256 amount,
+        address recipient,
+        bool lock
+    ) external {
+        if (amount == 0) revert ZeroAmount();
+        if (recipient == address(0)) revert ZeroAddress();
+
+        emit Migrate(recipient, msg.sender, lock, amount);
+
+        // Unstake xBTRFLY
+        xBtrfly.transferFrom(msg.sender, address(this), amount);
+        staking.unstake(amount, false);
+
+        // Burn BTRFLY
+        btrfly.burn(amount);
+
+        // Mint BTRFLYV2
+        _mintBtrflyV2(wxBtrfly.wBTRFLYValue(amount), recipient, lock);
     }
 
     /**
