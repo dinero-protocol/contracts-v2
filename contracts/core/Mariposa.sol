@@ -2,6 +2,7 @@
 pragma solidity 0.8.12;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 
 /// @title Mariposa
 /// @author never
@@ -15,67 +16,65 @@ interface IBTRFLY {
     function mint(address account_, uint256 amount_) external;
 }
 
-contract Mariposa is Ownable {
-    IBTRFLY public immutable btrfly;
+contract Mariposa is Pausable, Ownable {
+    IBTRFLY public immutable btrflyV2;
     uint256 public immutable supplyCap;
+
     uint256 public emissions;
     uint256 public totalAllowances;
-    bool public isShutdown;
     mapping(address => uint256) public mintAllowances;
     mapping(address => bool) public isMinter;
-    address[] public minters; // Push only, beware false-positives. Only for viewing.
 
-    event AllowanceSet(address indexed minter, uint256 amount);
+    // Push only, beware false-positives. Only for viewing.
+    address[] public minters;
+
     event Requested(
         address indexed minter,
         address indexed recipient,
         uint256 amount
     );
-    event AddedMinter(address indexed minter);
+    event AddedMinter(address minter);
     event IncreasedAllowance(address indexed minter, uint256 amount);
     event DecreasedAllowance(address indexed minter, uint256 amount);
-    event Shutdown();
 
     error ZeroAddress();
     error ZeroAmount();
     error ExceedsAllowance();
     error UnderflowAllowance();
     error ExceedsSupplyCap();
-    error Closed();
     error NotMinter();
     error AlreadyAdded();
 
     /** 
-        @notice Contructor
-        @param  _btrfly     address  BTRFLY token address
+        @param  _btrflyV2   address  BTRFLYV2 token address
         @param  _supplyCap  uint256  Max number of tokens contract can emmit
      */
-    constructor(address _btrfly, uint256 _supplyCap) {
-        if (_btrfly == address(0)) revert ZeroAddress();
-        btrfly = IBTRFLY(_btrfly);
-
+    constructor(address _btrflyV2, uint256 _supplyCap) {
+        if (_btrflyV2 == address(0)) revert ZeroAddress();
         if (_supplyCap == 0) revert ZeroAmount();
+
+        btrflyV2 = IBTRFLY(_btrflyV2);
         supplyCap = _supplyCap;
     }
 
     /** 
-        @notice Mints tokens to recipient 
+        @notice Mints tokens for recipient 
         @param  recipient  address  To receive minted tokens
         @param  amount     uint256  Amount
      */
-    function request(address recipient, uint256 amount) external {
+    function request(address recipient, uint256 amount) external whenNotPaused {
         if (!isMinter[msg.sender]) revert NotMinter();
         if (amount == 0) revert ZeroAmount();
         if (recipient == address(0)) revert ZeroAddress();
-        if (isShutdown) revert Closed();
         if (amount > mintAllowances[msg.sender]) revert ExceedsAllowance();
 
         emissions += amount;
         mintAllowances[msg.sender] -= amount;
         totalAllowances -= amount;
 
-        btrfly.mint(recipient, amount);
         emit Requested(msg.sender, recipient, amount);
+
+        btrflyV2.mint(recipient, amount);
     }
 
     /** 
@@ -95,15 +94,14 @@ contract Mariposa is Ownable {
     /** 
         @notice Increase allowance
         @param  minter  address  Address with minting rights
-        @param  amount  uint256  Amount to decrease
+        @param  amount  uint256  Amount to increase
      */
     function increaseAllowance(address minter, uint256 amount)
         external
         onlyOwner
     {
-        if (minter == address(0)) revert ZeroAddress();
-        if (amount == 0) revert ZeroAmount();
         if (!isMinter[minter]) revert NotMinter();
+        if (amount == 0) revert ZeroAmount();
         if (emissions + totalAllowances + amount > supplyCap)
             revert ExceedsSupplyCap();
 
@@ -122,9 +120,8 @@ contract Mariposa is Ownable {
         external
         onlyOwner
     {
-        if (minter == address(0)) revert ZeroAddress();
-        if (amount == 0) revert ZeroAmount();
         if (!isMinter[minter]) revert NotMinter();
+        if (amount == 0) revert ZeroAmount();
         if (mintAllowances[minter] < amount) revert UnderflowAllowance();
 
         totalAllowances -= amount;
@@ -134,13 +131,14 @@ contract Mariposa is Ownable {
     }
 
     /** 
-        @notice Emergency method to shutdown requests
-     */
-    function shutdown() external onlyOwner {
-        if (isShutdown) revert Closed();
-
-        isShutdown = true;
-
-        emit Shutdown();
+        @notice Set the contract's pause state
+        @param state  bool  Pause state
+    */
+    function setPauseState(bool state) external onlyOwner {
+        if (state) {
+            _pause();
+        } else {
+            _unpause();
+        }
     }
 }
