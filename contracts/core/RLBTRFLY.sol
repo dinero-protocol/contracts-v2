@@ -216,6 +216,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
      */
     function lock(address account, uint256 amount) external nonReentrant {
         if (account == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroAmount();
 
         btrfly.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -228,7 +229,6 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         @param  amount   uint256  Amount
      */
     function _lock(address account, uint256 amount) internal {
-        if (amount == 0) revert ZeroAmount();
         if (isShutdown) revert IsShutdown();
 
         Balance storage balance = balances[account];
