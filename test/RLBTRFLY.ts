@@ -43,7 +43,7 @@ describe('RLBTRFLY', function () {
 
   describe('constructor', function () {
     it('Should set up contract state', async function () {
-      const btrfly = await rlBtrfly.btrfly();
+      const btrfly = await rlBtrfly.btrflyV2();
 
       expect(btrfly.toLowerCase()).to.equal(btrflyV2.address.toLowerCase());
     });
