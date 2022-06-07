@@ -36,6 +36,7 @@ describe('TokenMigrator', function () {
 
   before(async function () {
     ({
+      admin,
       zeroAddress,
       redactedMultisig,
       btrfly,
@@ -44,7 +45,6 @@ describe('TokenMigrator', function () {
       wxBtrfly,
       redactedStaking,
     } = this);
-    [admin] = await ethers.getSigners();
     mariposa = (await (
       await ethers.getContractFactory('MockMariposa')
     ).deploy(btrflyV2.address)) as MockMariposa;
