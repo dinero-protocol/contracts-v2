@@ -44,7 +44,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
     // Full lock duration = 16 epochs
     uint256 public constant LOCK_DURATION = 16 * EPOCH_DURATION;
 
-    ERC20 public immutable btrfly;
+    ERC20 public immutable btrflyV2;
 
     uint256 public lockedSupply;
 
@@ -69,11 +69,11 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
     error IsShutdown();
 
     /**
-        @param  _btrfly  address  BTRFLY token address
+        @param  _btrflyV2  address  BTRFLYV2 token address
      */
-    constructor(address _btrfly) {
-        if (_btrfly == address(0)) revert ZeroAddress();
-        btrfly = ERC20(_btrfly);
+    constructor(address _btrflyV2) {
+        if (_btrflyV2 == address(0)) revert ZeroAddress();
+        btrflyV2 = ERC20(_btrflyV2);
     }
 
     /** 
@@ -218,7 +218,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         if (account == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
 
-        btrfly.safeTransferFrom(msg.sender, address(this), amount);
+        btrflyV2.safeTransferFrom(msg.sender, address(this), amount);
 
         _lock(account, amount);
     }
@@ -308,7 +308,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         if (relock) {
             _lock(withdrawTo, locked);
         } else {
-            btrfly.safeTransfer(withdrawTo, locked);
+            btrflyV2.safeTransfer(withdrawTo, locked);
         }
     }
 
