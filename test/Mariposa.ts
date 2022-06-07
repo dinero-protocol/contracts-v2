@@ -289,4 +289,40 @@ describe('Mariposa', function () {
       });
     });
   });
+
+  describe('setPauseState', function () {
+    it('Should revert if not called by owner', async function () {
+      const state = true;
+
+      await expect(
+        mariposa.connect(notAdmin).setPauseState(state)
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
+
+    it('Should pause the contract', async function () {
+      const isPausedBefore = await mariposa.paused();
+      const state = true;
+
+      await mariposa.setPauseState(state);
+
+      const isPausedAfter = await mariposa.paused();
+
+      expect(isPausedBefore).to.be.false;
+      expect(isPausedAfter).to.be.true;
+      expect(isPausedAfter).to.equal(state);
+    });
+
+    it('Should unpause the contract', async function () {
+      const isPausedBefore = await mariposa.paused();
+      const state = false;
+
+      await mariposa.setPauseState(state);
+
+      const isPausedAfter = await mariposa.paused();
+
+      expect(isPausedBefore).to.be.true;
+      expect(isPausedAfter).to.be.false;
+      expect(isPausedAfter).to.equal(state);
+    });
+  });
 });

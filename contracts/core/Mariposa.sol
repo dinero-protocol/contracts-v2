@@ -96,7 +96,7 @@ contract Mariposa is Pausable, Ownable {
     /** 
         @notice Increase allowance
         @param  minter  address  Address with minting rights
-        @param  amount  uint256  Amount to decrease
+        @param  amount  uint256  Amount to increase
      */
     function increaseAllowance(address minter, uint256 amount)
         external
