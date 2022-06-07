@@ -26,10 +26,10 @@ describe('Mariposa', function () {
 
   describe('constructor', function () {
     it('Should set up contract state', async function () {
-      const _btrflyV2 = await mariposa.btrfly();
+      const _btrflyV2 = await mariposa.btrflyV2();
       const _supplyCap = await mariposa.supplyCap();
 
-      expect(_btrflyV2.toLowerCase()).to.equal(btrflyV2.address.toLowerCase());
+      expect(_btrflyV2).to.equal(btrflyV2.address);
       expect(_supplyCap).to.equal(mariposaSupplyCap);
     });
   });

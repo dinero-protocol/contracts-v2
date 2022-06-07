@@ -18,7 +18,7 @@ import {
   validateEvent,
 } from './helpers';
 
-describe('Token Migrator', function () {
+describe('TokenMigrator', function () {
   let admin: SignerWithAddress;
   let dao: SignerWithAddress;
   let zeroAddress: string;

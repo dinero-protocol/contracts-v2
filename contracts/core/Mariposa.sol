@@ -16,16 +16,18 @@ interface IBTRFLY {
 }
 
 contract Mariposa is Ownable {
-    IBTRFLY public immutable btrfly;
+    IBTRFLY public immutable btrflyV2;
     uint256 public immutable supplyCap;
+
     uint256 public emissions;
     uint256 public totalAllowances;
     bool public isShutdown;
     mapping(address => uint256) public mintAllowances;
     mapping(address => bool) public isMinter;
-    address[] public minters; // Push only, beware false-positives. Only for viewing.
 
-    event AllowanceSet(address indexed minter, uint256 amount);
+    // Push only, beware false-positives. Only for viewing.
+    address[] public minters;
+
     event Requested(
         address indexed minter,
         address indexed recipient,
@@ -46,15 +48,14 @@ contract Mariposa is Ownable {
     error AlreadyAdded();
 
     /** 
-        @notice Contructor
-        @param  _btrfly     address  BTRFLY token address
+        @param  _btrflyV2   address  BTRFLYV2 token address
         @param  _supplyCap  uint256  Max number of tokens contract can emmit
      */
-    constructor(address _btrfly, uint256 _supplyCap) {
-        if (_btrfly == address(0)) revert ZeroAddress();
-        btrfly = IBTRFLY(_btrfly);
-
+    constructor(address _btrflyV2, uint256 _supplyCap) {
+        if (_btrflyV2 == address(0)) revert ZeroAddress();
         if (_supplyCap == 0) revert ZeroAmount();
+
+        btrflyV2 = IBTRFLY(_btrflyV2);
         supplyCap = _supplyCap;
     }
 
@@ -74,7 +75,7 @@ contract Mariposa is Ownable {
         mintAllowances[msg.sender] -= amount;
         totalAllowances -= amount;
 
-        btrfly.mint(recipient, amount);
+        btrflyV2.mint(recipient, amount);
         emit Requested(msg.sender, recipient, amount);
     }
 
