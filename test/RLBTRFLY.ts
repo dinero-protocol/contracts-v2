@@ -558,5 +558,14 @@ describe('RLBTRFLY', function () {
     it('Should revert when called after shutdown', async function () {
       await expect(rlBtrfly.shutdown()).to.be.revertedWith('IsShutdown()');
     });
+
+    it('Should revert when attempting to lock after shutdown', async function () {
+      const account = admin.address;
+      const lockAmount = toBN(1e9);
+
+      await expect(rlBtrfly.lock(account, lockAmount)).to.be.revertedWith(
+        'IsShutdown()'
+      );
+    });
   });
 });
