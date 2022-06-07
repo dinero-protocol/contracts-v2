@@ -102,9 +102,8 @@ contract Mariposa is Pausable, Ownable {
         external
         onlyOwner
     {
-        if (minter == address(0)) revert ZeroAddress();
-        if (amount == 0) revert ZeroAmount();
         if (!isMinter[minter]) revert NotMinter();
+        if (amount == 0) revert ZeroAmount();
         if (emissions + totalAllowances + amount > supplyCap)
             revert ExceedsSupplyCap();
 
