@@ -210,11 +210,14 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
     }
 
     /** 
-        @notice Locked tokens cannot be withdrawn for lockDuration and are eligible to receive stakingReward rewards
+        @notice Locked tokens cannot be withdrawn for the entire lock duration and are eligible to receive rewards
         @param  account  address  Account
         @param  amount   uint256  Amount
      */
     function lock(address account, uint256 amount) external nonReentrant {
+        if (account == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroAmount();
+
         btrfly.safeTransferFrom(msg.sender, address(this), amount);
 
         _lock(account, amount);
@@ -222,11 +225,10 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
 
     /** 
         @notice Perform the actual lock
-        @param  account    address  Account
-        @param  amount     uint256  Amount
+        @param  account  address  Account
+        @param  amount   uint256  Amount
      */
     function _lock(address account, uint256 amount) internal {
-        if (amount == 0) revert ZeroAmount();
         if (isShutdown) revert IsShutdown();
 
         Balance storage balance = balances[account];
@@ -251,8 +253,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
                 })
             );
         } else {
-            LockedBalance storage locked = locks[idx - 1];
-            locked.amount += lockAmount;
+            locks[idx - 1].amount += lockAmount;
         }
 
         emit Locked(account, lockEpoch, amount);
@@ -260,9 +261,9 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
 
     /** 
         @notice Withdraw all currently locked tokens where the unlock time has passed
-        @param  account      address  Account
-        @param  relock       bool     Whether should relock
-        @param  withdrawTo   address  Target receiver
+        @param  account     address  Account
+        @param  relock      bool     Whether should relock
+        @param  withdrawTo  address  Target receiver
      */
     function _processExpiredLocks(
         address account,
