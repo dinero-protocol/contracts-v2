@@ -42,7 +42,6 @@ contract Mariposa is Pausable, Ownable {
     error ExceedsAllowance();
     error UnderflowAllowance();
     error ExceedsSupplyCap();
-    error IsPaused();
     error NotMinter();
     error AlreadyAdded();
 
@@ -63,11 +62,10 @@ contract Mariposa is Pausable, Ownable {
         @param  recipient  address  To receive minted tokens
         @param  amount     uint256  Amount
      */
-    function request(address recipient, uint256 amount) external {
+    function request(address recipient, uint256 amount) external whenNotPaused {
         if (!isMinter[msg.sender]) revert NotMinter();
         if (amount == 0) revert ZeroAmount();
         if (recipient == address(0)) revert ZeroAddress();
-        if (paused()) revert IsPaused();
         if (amount > mintAllowances[msg.sender]) revert ExceedsAllowance();
 
         emissions += amount;

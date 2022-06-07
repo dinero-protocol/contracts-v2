@@ -35,6 +35,20 @@ describe('Mariposa', function () {
   });
 
   describe('request', function () {
+    it('Should revert if paused', async function () {
+      await mariposa.setPauseState(true);
+
+      const recipient = admin.address;
+      const amount = 1;
+
+      expect(await mariposa.paused()).to.equal(true);
+      await expect(mariposa.request(recipient, amount)).to.be.revertedWith(
+        'Pausable: paused'
+      );
+
+      await mariposa.setPauseState(false);
+    });
+
     it('Should revert if caller is not a minter', async function () {
       const recipient = admin.address;
       const amount = 1;
@@ -64,21 +78,7 @@ describe('Mariposa', function () {
       ).to.be.revertedWith('ZeroAddress()');
     });
 
-    it('Should revert if paused', async function () {
-      await mariposa.setPauseState(true);
-
-      const recipient = admin.address;
-      const amount = 1;
-
-      expect(await mariposa.paused()).to.equal(true);
-      await expect(mariposa.request(recipient, amount)).to.be.revertedWith(
-        'IsPaused()'
-      );
-    });
-
     it('Should amount is greater than allowance', async function () {
-      await mariposa.setPauseState(false);
-
       const mintAllowance = await mariposa.mintAllowances(admin.address);
       const recipient = admin.address;
       const invalidAmount = mintAllowance.add(1);
