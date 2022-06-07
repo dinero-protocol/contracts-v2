@@ -33,7 +33,7 @@ contract Mariposa is Pausable, Ownable {
         address indexed recipient,
         uint256 amount
     );
-    event AddedMinter(address indexed minter);
+    event AddedMinter(address minter);
     event IncreasedAllowance(address indexed minter, uint256 amount);
     event DecreasedAllowance(address indexed minter, uint256 amount);
 

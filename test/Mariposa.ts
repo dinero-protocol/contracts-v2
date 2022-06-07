@@ -3,17 +3,25 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BigNumber } from 'ethers';
 import { Mariposa } from '../typechain';
 import { BTRFLYV2 } from '../typechain/BTRFLYV2';
-import { toBN, callAndReturnEvents, validateEvent, parseLog } from './helpers';
+import {
+  toBN,
+  callAndReturnEvent,
+  callAndReturnEvents,
+  validateEvent,
+  parseLog,
+} from './helpers';
 
 describe('Mariposa', function () {
   let admin: SignerWithAddress;
+  let notAdmin: SignerWithAddress;
   let btrflyV2: BTRFLYV2;
   let mariposa: Mariposa;
   let mariposaSupplyCap: BigNumber;
   let zeroAddress: string;
 
   before(async function () {
-    ({ admin, btrflyV2, mariposa, mariposaSupplyCap, zeroAddress } = this);
+    ({ admin, notAdmin, btrflyV2, mariposa, mariposaSupplyCap, zeroAddress } =
+      this);
   });
 
   describe('constructor', function () {
@@ -120,6 +128,48 @@ describe('Mariposa', function () {
         from: zeroAddress,
         to: recipient,
         amount,
+      });
+    });
+  });
+
+  describe('addMinter', function () {
+    it('Should revert if not owner', async function () {
+      const minter = notAdmin.address;
+
+      await expect(
+        mariposa.connect(notAdmin).addMinter(minter)
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
+
+    it('Should revert if minter is zero address', async function () {
+      const invalidMinter = zeroAddress;
+
+      await expect(mariposa.addMinter(invalidMinter)).to.be.revertedWith(
+        'ZeroAddress()'
+      );
+    });
+
+    it('Should revert if minter has already been added', async function () {
+      const invalidMinter = admin.address;
+
+      await expect(mariposa.addMinter(invalidMinter)).to.be.revertedWith(
+        'AlreadyAdded()'
+      );
+    });
+
+    it('Should add minter', async function () {
+      const minter = notAdmin.address;
+      const isMinterBefore = await mariposa.isMinter(minter);
+      const addEvent = await callAndReturnEvent(mariposa.addMinter, [minter]);
+      const isMinterAfter = await mariposa.isMinter(minter);
+      const mintersAfter = await mariposa.minters(1);
+
+      expect(isMinterBefore).to.equal(false);
+      expect(isMinterAfter).to.equal(true);
+      expect(mintersAfter).to.equal(minter);
+
+      validateEvent(addEvent, 'AddedMinter(address)', {
+        minter,
       });
     });
   });
