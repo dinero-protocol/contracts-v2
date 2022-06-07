@@ -222,8 +222,8 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
 
     /** 
         @notice Perform the actual lock
-        @param  account    address  Account
-        @param  amount     uint256  Amount
+        @param  account  address  Account
+        @param  amount   uint256  Amount
      */
     function _lock(address account, uint256 amount) internal {
         if (amount == 0) revert ZeroAmount();
@@ -251,8 +251,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
                 })
             );
         } else {
-            LockedBalance storage locked = locks[idx - 1];
-            locked.amount += lockAmount;
+            locks[idx - 1].amount += lockAmount;
         }
 
         emit Locked(account, lockEpoch, amount);
@@ -260,9 +259,9 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
 
     /** 
         @notice Withdraw all currently locked tokens where the unlock time has passed
-        @param  account      address  Account
-        @param  relock       bool     Whether should relock
-        @param  withdrawTo   address  Target receiver
+        @param  account     address  Account
+        @param  relock      bool     Whether should relock
+        @param  withdrawTo  address  Target receiver
      */
     function _processExpiredLocks(
         address account,
