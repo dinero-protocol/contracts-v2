@@ -231,4 +231,62 @@ describe('Mariposa', function () {
       });
     });
   });
+
+  describe('decreaseAllowance', function () {
+    it('Should revert if not owner', async function () {
+      const minter = notAdmin.address;
+      const amount = 1;
+
+      await expect(
+        mariposa.connect(notAdmin).decreaseAllowance(minter, amount)
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
+
+    it('Should revert if minter is not minter', async function () {
+      const invalidMinter = zeroAddress;
+      const amount = 1;
+
+      await expect(
+        mariposa.decreaseAllowance(invalidMinter, amount)
+      ).to.be.revertedWith('NotMinter()');
+    });
+
+    it('Should revert if amount is zero', async function () {
+      const minter = notAdmin.address;
+      const invalidAmount = 0;
+
+      await expect(
+        mariposa.decreaseAllowance(minter, invalidAmount)
+      ).to.be.revertedWith('ZeroAmount()');
+    });
+
+    it('Should revert if amount is greater than allowance', async function () {
+      const minter = notAdmin.address;
+      const mintAllowances = await mariposa.mintAllowances(minter);
+      const amount = mintAllowances.add(1);
+
+      expect(mintAllowances.lt(amount)).to.equal(true);
+      await expect(
+        mariposa.decreaseAllowance(minter, amount)
+      ).to.be.revertedWith('UnderflowAllowance()');
+    });
+
+    it('Should decrease allowance', async function () {
+      const minter = notAdmin.address;
+      const mintAllowancesBefore = await mariposa.mintAllowances(minter);
+      const amount = mintAllowancesBefore;
+      const decreaseEvent = await callAndReturnEvent(
+        mariposa.decreaseAllowance,
+        [minter, amount]
+      );
+      const mintAllowancesAfter = await mariposa.mintAllowances(minter);
+
+      expect(mintAllowancesAfter).to.equal(mintAllowancesBefore.sub(amount));
+
+      validateEvent(decreaseEvent, 'DecreasedAllowance(address,uint256)', {
+        minter,
+        amount,
+      });
+    });
+  });
 });
