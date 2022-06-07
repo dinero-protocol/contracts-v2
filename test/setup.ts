@@ -50,6 +50,7 @@ before(async function () {
 
   // Fund the admin address with some BTRFLYV2 for RL TEST
   await btrflyV2.grantRole(await btrflyV2.MINTER_ROLE(), admin.address);
+  await btrflyV2.grantRole(await btrflyV2.MINTER_ROLE(), mariposa.address);
   await btrflyV2.mint(admin.address, adminBtrflyBalance);
 
   // Pre-approve for easier and shorter test run
