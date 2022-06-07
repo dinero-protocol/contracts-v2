@@ -210,11 +210,13 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
     }
 
     /** 
-        @notice Locked tokens cannot be withdrawn for lockDuration and are eligible to receive stakingReward rewards
+        @notice Locked tokens cannot be withdrawn for the entire lock duration and are eligible to receive rewards
         @param  account  address  Account
         @param  amount   uint256  Amount
      */
     function lock(address account, uint256 amount) external nonReentrant {
+        if (account == address(0)) revert ZeroAddress();
+
         btrfly.safeTransferFrom(msg.sender, address(this), amount);
 
         _lock(account, amount);

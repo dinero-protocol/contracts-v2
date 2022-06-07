@@ -73,6 +73,15 @@ describe('RLBTRFLY', function () {
       );
     });
 
+    it('Should revert on locking for zero address', async function () {
+      const account = ethers.constants.AddressZero;
+      const lockAmount = toBN(1e19);
+
+      await expect(rlBtrfly.lock(account, lockAmount)).to.be.revertedWith(
+        'ZeroAddress()'
+      );
+    });
+
     it('Should lock on valid amount of BTRFLY', async function () {
       const account = admin.address;
       const lockAmount = toBN(1e9);
