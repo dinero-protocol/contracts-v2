@@ -17,9 +17,8 @@ import {
   callAndReturnEvents,
   validateEvent,
 } from './helpers';
-import { BigNumber } from 'ethers';
 
-describe('Token Migrator', function () {
+describe('TokenMigrator', function () {
   let admin: SignerWithAddress;
   let dao: SignerWithAddress;
   let zeroAddress: string;
