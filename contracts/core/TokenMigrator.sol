@@ -2,6 +2,7 @@
 pragma solidity 0.8.12;
 
 import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
 import {IStaking} from "../interfaces/IStaking.sol";
 import {IWXBTRFLY} from "../interfaces/IWXBTRFLY.sol";
 import {IBTRFLY} from "../interfaces/IBTRFLY.sol";
@@ -20,6 +21,8 @@ import {RLBTRFLY} from "./RLBTRFLY.sol";
 */
 
 contract TokenMigrator {
+    using SafeTransferLib for ERC20;
+
     IWXBTRFLY public immutable wxBtrfly;
     ERC20 public immutable xBtrfly;
     ERC20 public immutable btrflyV2;
@@ -73,8 +76,8 @@ contract TokenMigrator {
         staking = IStaking(staking_);
         rlBtrfly = RLBTRFLY(rlBtrfly_);
 
-        xBtrfly.approve(staking_, type(uint256).max);
-        btrflyV2.approve(rlBtrfly_, type(uint256).max);
+        xBtrfly.safeApprove(staking_, type(uint256).max);
+        btrflyV2.safeApprove(rlBtrfly_, type(uint256).max);
     }
 
     /**
