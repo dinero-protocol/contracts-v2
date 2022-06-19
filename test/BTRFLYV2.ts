@@ -75,6 +75,39 @@ describe('BTRFLYV2', function () {
 
       validateEvent(mintEvent, 'Transfer(address,address,uint256)', {
         from: zeroAddress,
+        to,
+        amount,
+      });
+    });
+  });
+
+  describe('burn', function () {
+    it('Should revert if caller balance is insufficient', async function () {
+      const invalidAmount = (await btrflyV2.balanceOf(admin.address)).add(1);
+
+      await expect(btrflyV2.burn(invalidAmount)).to.be.revertedWith('0x11');
+    });
+
+    it('Should burn', async function () {
+      const minterRole = await btrflyV2.MINTER_ROLE();
+
+      await btrflyV2.grantRole(minterRole, notAdmin.address);
+
+      const hasMinterRole = await btrflyV2.hasRole(
+        minterRole,
+        notAdmin.address
+      );
+      const to = notAdmin.address;
+      const amount = toBN(1);
+      const mintEvent = await callAndReturnEvent(
+        btrflyV2.connect(notAdmin).mint,
+        [to, amount]
+      );
+
+      expect(hasMinterRole).to.equal(true);
+
+      validateEvent(mintEvent, 'Transfer(address,address,uint256)', {
+        from: zeroAddress,
         to: to,
         amount,
       });

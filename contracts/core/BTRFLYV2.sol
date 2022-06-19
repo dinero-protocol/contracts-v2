@@ -27,4 +27,12 @@ contract BTRFLYV2 is AccessControl, ERC20("BTRFLY", "BTRFLY", 18) {
     function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
         _mint(to, amount);
     }
+
+    /**
+        @notice Burn tokens
+        @param  amount  uint256  Amount to burn
+     */
+    function burn(uint256 amount) external {
+        _burn(msg.sender, amount);
+    }
 }
