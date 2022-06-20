@@ -7,7 +7,7 @@ import {SafeTransferLib} from "@rari-capital/solmate/src/utils/SafeTransferLib.s
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title RLBTRFLY
-/// @author Drahrealm
+/// @author ████
 
 /**
     @notice 
