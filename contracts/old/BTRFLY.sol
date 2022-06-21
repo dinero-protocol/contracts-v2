@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-pragma solidity 0.7.5;
+pragma solidity 0.8.12;
 
 library EnumerableSet {
     // To implement this library for multiple types with as little code
@@ -339,7 +339,7 @@ library EnumerableSet {
         internal
         returns (bool)
     {
-        return _add(set._inner, bytes32(uint256(value)));
+        return _add(set._inner, bytes32(bytes20(value)));
     }
 
     /**
@@ -352,7 +352,7 @@ library EnumerableSet {
         internal
         returns (bool)
     {
-        return _remove(set._inner, bytes32(uint256(value)));
+        return _remove(set._inner, bytes32(bytes20(value)));
     }
 
     /**
@@ -363,7 +363,7 @@ library EnumerableSet {
         view
         returns (bool)
     {
-        return _contains(set._inner, bytes32(uint256(value)));
+        return _contains(set._inner, bytes32(bytes20(value)));
     }
 
     /**
@@ -388,7 +388,7 @@ library EnumerableSet {
         view
         returns (address)
     {
-        return address(uint256(_at(set._inner, index)));
+        return address(uint160(bytes20(_at(set._inner, index))));
     }
 
     /**
@@ -418,7 +418,7 @@ library EnumerableSet {
         uint256 index_,
         address valueToInsert_
     ) internal returns (bool) {
-        return _insert(set_._inner, index_, bytes32(uint256(valueToInsert_)));
+        return _insert(set_._inner, index_, bytes32(bytes20(valueToInsert_)));
     }
 
     // UintSet
