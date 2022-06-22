@@ -34,7 +34,7 @@ contract TokenMigratorTest is Test, Helper {
     }
 
     /**
-        @notice Test migration 
+        @notice Test migration
         @param  wxAmount   uint256  Amount of wxBTRFLY
         @param  xAmount    uint256  Amount of xBTRFLY
         @param  v1Amount   uint256  Amount of BTRFLY
@@ -57,8 +57,6 @@ contract TokenMigratorTest is Test, Helper {
         uint256 wxAmountBtrfly = WXBTRFLY.xBTRFLYValue(wxAmount);
 
         BTRFLY.mint(address(this), xAmount + v1Amount + wxAmountBtrfly);
-        BTRFLY.approve(address(WXBTRFLY), wxAmountBtrfly);
-        BTRFLY.approve(address(REDACTED_STAKING), xAmount);
         WXBTRFLY.wrapFromBTRFLY(wxAmountBtrfly);
         REDACTED_STAKING.stake(xAmount, address(this));
         REDACTED_STAKING.claim(address(this));
@@ -84,5 +82,45 @@ contract TokenMigratorTest is Test, Helper {
             address(this),
             lock
         );
+    }
+
+    /**
+        @notice Test migrate for each token and compare the amounts received
+        @param  amount  uint256  Amount of BTRFLY for each migrate token type
+     */
+    function testMigrateAmountComparison(uint256 amount) external {
+        vm.assume(amount != 0);
+        vm.assume(amount < 1000e9);
+
+        // Mint BTRFLY and split the tokens amongst the 3 different token types
+        BTRFLY.mint(address(this), amount * 3);
+        REDACTED_STAKING.stake(amount, address(this));
+        REDACTED_STAKING.claim(address(this));
+
+        // Migrate to BTRFLYV2 for each token type and track the amount received
+        tokenMigrator.migrate(
+            WXBTRFLY.wrapFromBTRFLY(amount),
+            0,
+            0,
+            address(this),
+            false
+        );
+
+        uint256 btrflyV2FromWx = btrflyV2.balanceOf(address(this));
+
+        tokenMigrator.migrate(0, amount, 0, address(this), false);
+
+        // Deduct BTRFLYV2 received from previous token type migrations
+        uint256 btrflyV2FromX = btrflyV2.balanceOf(address(this)) -
+            btrflyV2FromWx;
+
+        tokenMigrator.migrate(0, 0, amount, address(this), false);
+
+        uint256 btrflyV2FromV1 = btrflyV2.balanceOf(address(this)) -
+            (btrflyV2FromWx + btrflyV2FromX);
+
+        // BTRFLYV2 received is equal for all if their underlying BTRFLY are equal
+        assertTrue(btrflyV2FromWx == btrflyV2FromX);
+        assertTrue(btrflyV2FromX == btrflyV2FromV1);
     }
 }

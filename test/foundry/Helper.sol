@@ -51,7 +51,10 @@ contract Helper is Test {
 
         WXBTRFLY.approve(address(tokenMigrator), type(uint256).max);
         XBTRFLY.approve(address(tokenMigrator), type(uint256).max);
+        XBTRFLY.approve(address(WXBTRFLY), type(uint256).max);
         BTRFLY.approve(address(tokenMigrator), type(uint256).max);
+        BTRFLY.approve(address(WXBTRFLY), type(uint256).max);
+        BTRFLY.approve(address(REDACTED_STAKING), type(uint256).max);
         mariposa.addMinter(address(tokenMigrator));
         mariposa.increaseAllowance(address(tokenMigrator), supplyCap);
     }
