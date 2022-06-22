@@ -47,7 +47,7 @@ contract Mariposa is Pausable, Ownable {
 
     /**
         @param  _btrflyV2   address  BTRFLYV2 token address
-        @param  _supplyCap  uint256  Max number of tokens contract can emmit
+        @param  _supplyCap  uint256  Max number of tokens contract can emit
      */
     constructor(address _btrflyV2, uint256 _supplyCap) {
         if (_btrflyV2 == address(0)) revert ZeroAddress();
