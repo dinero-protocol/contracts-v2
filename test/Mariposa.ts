@@ -34,7 +34,7 @@ describe('Mariposa', function () {
     });
   });
 
-  describe('request', function () {
+  describe('mintFor', function () {
     it('Should revert if paused', async function () {
       await mariposa.setPauseState(true);
 
@@ -42,7 +42,7 @@ describe('Mariposa', function () {
       const amount = 1;
 
       expect(await mariposa.paused()).to.equal(true);
-      await expect(mariposa.request(recipient, amount)).to.be.revertedWith(
+      await expect(mariposa.mintFor(recipient, amount)).to.be.revertedWith(
         'Pausable: paused'
       );
 
@@ -53,7 +53,7 @@ describe('Mariposa', function () {
       const recipient = admin.address;
       const amount = 1;
 
-      await expect(mariposa.request(recipient, amount)).to.be.revertedWith(
+      await expect(mariposa.mintFor(recipient, amount)).to.be.revertedWith(
         'NotMinter()'
       );
     });
@@ -65,7 +65,7 @@ describe('Mariposa', function () {
       const invalidAmount = 0;
 
       await expect(
-        mariposa.request(recipient, invalidAmount)
+        mariposa.mintFor(recipient, invalidAmount)
       ).to.be.revertedWith('ZeroAmount()');
     });
 
@@ -74,7 +74,7 @@ describe('Mariposa', function () {
       const amount = 1;
 
       await expect(
-        mariposa.request(invalidRecipient, amount)
+        mariposa.mintFor(invalidRecipient, amount)
       ).to.be.revertedWith('ZeroAddress()');
     });
 
@@ -85,11 +85,11 @@ describe('Mariposa', function () {
 
       expect(mintAllowance.lt(invalidAmount)).to.equal(true);
       await expect(
-        mariposa.request(recipient, invalidAmount)
+        mariposa.mintFor(recipient, invalidAmount)
       ).to.be.revertedWith('ExceedsAllowance()');
     });
 
-    it('Should request/mint BTRFLYV2 tokens', async function () {
+    it('Should mint BTRFLYV2 tokens for recipient', async function () {
       const recipient = admin.address;
       const amount = toBN(1e18);
 
@@ -99,11 +99,11 @@ describe('Mariposa', function () {
       const emissionsBefore = await mariposa.emissions();
       const mintAllowancesBefore = await mariposa.mintAllowances(admin.address);
       const totalAllowancesBefore = await mariposa.totalAllowances();
-      const events = await callAndReturnEvents(mariposa.request, [
+      const events = await callAndReturnEvents(mariposa.mintFor, [
         recipient,
         amount,
       ]);
-      const requestedEvent = events[0];
+      const mintedForEvent = events[0];
       const mintEvent = parseLog(btrflyV2, events[1]);
       const btrflyV2BalanceAfter = await btrflyV2.balanceOf(admin.address);
       const emissionsAfter = await mariposa.emissions();
@@ -118,7 +118,7 @@ describe('Mariposa', function () {
       expect(totalAllowancesAfter).to.equal(totalAllowancesBefore.sub(amount));
       expect(btrflyV2BalanceAfter.sub(btrflyV2BalanceBefore)).to.equal(amount);
 
-      validateEvent(requestedEvent, 'Requested(address,address,uint256)', {
+      validateEvent(mintedForEvent, 'MintedFor(address,address,uint256)', {
         minter: admin.address,
         recipient,
         amount,

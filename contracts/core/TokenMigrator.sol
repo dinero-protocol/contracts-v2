@@ -13,7 +13,7 @@ import {RLBTRFLY} from "./RLBTRFLY.sol";
 /// @author Realkinando
 
 /**
-    @notice 
+    @notice
     Enables users to convert BTRFLY, xBTRFLY & wxBTRFLY to BTRFLYV2, at a rate based on the wxStaking Index.
     Dependent on the contract having a sufficient allowance from Mariposa.
 
@@ -179,7 +179,7 @@ contract TokenMigrator {
         bool lock
     ) internal {
         // If locking, mint BTRFLYV2 for TokenMigrator, who will lock on behalf of recipient
-        mariposa.request(lock ? address(this) : recipient, amount);
+        mariposa.mintFor(lock ? address(this) : recipient, amount);
 
         if (lock) rlBtrfly.lock(recipient, amount);
     }

@@ -12,6 +12,6 @@ contract Bond {
     }
 
     function bond(uint256 _amount) external {
-        mariposa.request(address(this), _amount);
+        mariposa.mintFor(address(this), _amount);
     }
 }

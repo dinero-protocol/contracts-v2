@@ -8,7 +8,7 @@ import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 /// @author never
 
 /**
-    @notice 
+    @notice
     Allowance Contract For the Redacted Ecosystem to mint BTRFLY
 */
 
@@ -28,7 +28,7 @@ contract Mariposa is Pausable, Ownable {
     // Push only, beware false-positives. Only for viewing.
     address[] public minters;
 
-    event Requested(
+    event MintedFor(
         address indexed minter,
         address indexed recipient,
         uint256 amount
@@ -45,7 +45,7 @@ contract Mariposa is Pausable, Ownable {
     error NotMinter();
     error AlreadyAdded();
 
-    /** 
+    /**
         @param  _btrflyV2   address  BTRFLYV2 token address
         @param  _supplyCap  uint256  Max number of tokens contract can emmit
      */
@@ -57,12 +57,12 @@ contract Mariposa is Pausable, Ownable {
         supplyCap = _supplyCap;
     }
 
-    /** 
-        @notice Mints tokens for recipient 
+    /**
+        @notice Mints tokens for recipient
         @param  recipient  address  To receive minted tokens
         @param  amount     uint256  Amount
      */
-    function request(address recipient, uint256 amount) external whenNotPaused {
+    function mintFor(address recipient, uint256 amount) external whenNotPaused {
         if (!isMinter[msg.sender]) revert NotMinter();
         if (amount == 0) revert ZeroAmount();
         if (recipient == address(0)) revert ZeroAddress();
@@ -72,12 +72,12 @@ contract Mariposa is Pausable, Ownable {
         mintAllowances[msg.sender] -= amount;
         totalAllowances -= amount;
 
-        emit Requested(msg.sender, recipient, amount);
+        emit MintedFor(msg.sender, recipient, amount);
 
         btrflyV2.mint(recipient, amount);
     }
 
-    /** 
+    /**
         @notice Add address to minter role.
         @param  minter  address  Minter address
      */
@@ -91,7 +91,7 @@ contract Mariposa is Pausable, Ownable {
         emit AddedMinter(minter);
     }
 
-    /** 
+    /**
         @notice Increase allowance
         @param  minter  address  Address with minting rights
         @param  amount  uint256  Amount to increase
@@ -111,7 +111,7 @@ contract Mariposa is Pausable, Ownable {
         emit IncreasedAllowance(minter, amount);
     }
 
-    /** 
+    /**
         @notice Decrease allowance
         @param  minter  address  Address with minting rights
         @param  amount  uint256  Amount to decrease
@@ -130,7 +130,7 @@ contract Mariposa is Pausable, Ownable {
         emit DecreasedAllowance(minter, amount);
     }
 
-    /** 
+    /**
         @notice Set the contract's pause state
         @param state  bool  Pause state
     */
