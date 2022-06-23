@@ -3,6 +3,7 @@ pragma solidity 0.8.12;
 
 import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IStaking} from "../interfaces/IStaking.sol";
 import {IWXBTRFLY} from "../interfaces/IWXBTRFLY.sol";
 import {IBTRFLY} from "../interfaces/IBTRFLY.sol";
@@ -21,6 +22,8 @@ import {RLBTRFLY} from "./RLBTRFLY.sol";
 */
 
 contract TokenMigrator {
+    using SafeERC20 for IBTRFLY;
+    using SafeERC20 for IWXBTRFLY;
     using SafeTransferLib for ERC20;
 
     IWXBTRFLY public immutable wxBtrfly;
@@ -87,7 +90,7 @@ contract TokenMigrator {
      */
     function _migrateWxBtrfly(uint256 amount) internal returns (uint256) {
         // Take custody of wxBTRFLY and unwrap to BTRFLY
-        wxBtrfly.transferFrom(msg.sender, address(this), amount);
+        wxBtrfly.safeTransferFrom(msg.sender, address(this), amount);
 
         return wxBtrfly.unwrapToBTRFLY(amount);
     }
@@ -102,7 +105,7 @@ contract TokenMigrator {
         returns (uint256 mintAmount)
     {
         // Unstake xBTRFLY
-        xBtrfly.transferFrom(msg.sender, address(this), amount);
+        xBtrfly.safeTransferFrom(msg.sender, address(this), amount);
         staking.unstake(amount, false);
 
         return wxBtrfly.wBTRFLYValue(amount);
@@ -117,7 +120,7 @@ contract TokenMigrator {
         internal
         returns (uint256 mintAmount)
     {
-        btrfly.transferFrom(msg.sender, address(this), amount);
+        btrfly.safeTransferFrom(msg.sender, address(this), amount);
 
         return wxBtrfly.wBTRFLYValue(amount);
     }
