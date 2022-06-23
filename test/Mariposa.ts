@@ -86,7 +86,7 @@ describe('Mariposa', function () {
       expect(mintAllowance.lt(invalidAmount)).to.equal(true);
       await expect(
         mariposa.mintFor(recipient, invalidAmount)
-      ).to.be.revertedWith('ExceedsAllowance()');
+      ).to.be.revertedWith('0x11');
     });
 
     it('Should mint BTRFLYV2 tokens for recipient', async function () {

@@ -39,7 +39,6 @@ contract Mariposa is Pausable, Ownable {
 
     error ZeroAddress();
     error ZeroAmount();
-    error ExceedsAllowance();
     error UnderflowAllowance();
     error ExceedsSupplyCap();
     error NotMinter();
@@ -66,10 +65,9 @@ contract Mariposa is Pausable, Ownable {
         if (!isMinter[msg.sender]) revert NotMinter();
         if (amount == 0) revert ZeroAmount();
         if (recipient == address(0)) revert ZeroAddress();
-        if (amount > mintAllowances[msg.sender]) revert ExceedsAllowance();
 
-        emissions += amount;
         mintAllowances[msg.sender] -= amount;
+        emissions += amount;
         totalAllowances -= amount;
 
         emit MintedFor(msg.sender, recipient, amount);
@@ -107,8 +105,7 @@ contract Mariposa is Pausable, Ownable {
 
         totalAllowances = t + amount;
 
-        if (emissions + totalAllowances > supplyCap)
-            revert ExceedsSupplyCap();
+        if (emissions + totalAllowances > supplyCap) revert ExceedsSupplyCap();
 
         mintAllowances[minter] += amount;
 
