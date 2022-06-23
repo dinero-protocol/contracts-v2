@@ -102,10 +102,14 @@ contract Mariposa is Pausable, Ownable {
     {
         if (!isMinter[minter]) revert NotMinter();
         if (amount == 0) revert ZeroAmount();
-        if (emissions + totalAllowances + amount > supplyCap)
+
+        uint256 t = totalAllowances;
+
+        totalAllowances = t + amount;
+
+        if (emissions + totalAllowances > supplyCap)
             revert ExceedsSupplyCap();
 
-        totalAllowances += amount;
         mintAllowances[minter] += amount;
 
         emit IncreasedAllowance(minter, amount);
