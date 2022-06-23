@@ -149,8 +149,8 @@ contract TokenMigrator {
         uint256 mintAmount;
 
         if (wxAmount != 0) {
-            burnAmount += wxBtrfly.xBTRFLYValue(wxAmount);
-            mintAmount += _migrateWxBtrfly(wxAmount);
+            burnAmount = wxBtrfly.xBTRFLYValue(wxAmount);
+            mintAmount = _migrateWxBtrfly(wxAmount);
         }
 
         if (xAmount != 0) {
