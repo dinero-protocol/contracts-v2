@@ -82,18 +82,14 @@ contract TokenMigrator {
 
     /**
         @notice Migrate wxBTRFLY to BTRFLYV2
-        @param  amount      uint256  Amount of wxBTRFLY to convert to BTRFLYV2
-        @return mintAmount  uint256  Amount of BTRFLYV2 to mint
+        @param  amount  uint256  Amount of wxBTRFLY to convert to BTRFLYV2
+        @return         uint256  Amount of BTRFLY to burn
      */
-    function _migrateWxBtrfly(uint256 amount)
-        internal
-        returns (uint256 mintAmount)
-    {
-        // Unwrap wxBTRFLY
+    function _migrateWxBtrfly(uint256 amount) internal returns (uint256) {
+        // Take custody of wxBTRFLY and unwrap to BTRFLY
         wxBtrfly.transferFrom(msg.sender, address(this), amount);
-        wxBtrfly.unwrapToBTRFLY(amount);
 
-        return amount;
+        return wxBtrfly.unwrapToBTRFLY(amount);
     }
 
     /**
@@ -149,8 +145,8 @@ contract TokenMigrator {
         uint256 mintAmount;
 
         if (wxAmount != 0) {
-            burnAmount = wxBtrfly.xBTRFLYValue(wxAmount);
-            mintAmount = _migrateWxBtrfly(wxAmount);
+            burnAmount = _migrateWxBtrfly(wxAmount);
+            mintAmount = wxAmount;
         }
 
         if (xAmount != 0) {
