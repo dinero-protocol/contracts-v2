@@ -2,6 +2,8 @@
 pragma solidity 0.8.12;
 
 import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IStaking} from "../interfaces/IStaking.sol";
 import {IWXBTRFLY} from "../interfaces/IWXBTRFLY.sol";
 import {IBTRFLY} from "../interfaces/IBTRFLY.sol";
@@ -12,7 +14,7 @@ import {RLBTRFLY} from "./RLBTRFLY.sol";
 /// @author Realkinando
 
 /**
-    @notice 
+    @notice
     Enables users to convert BTRFLY, xBTRFLY & wxBTRFLY to BTRFLYV2, at a rate based on the wxStaking Index.
     Dependent on the contract having a sufficient allowance from Mariposa.
 
@@ -20,6 +22,10 @@ import {RLBTRFLY} from "./RLBTRFLY.sol";
 */
 
 contract TokenMigrator {
+    using SafeERC20 for IBTRFLY;
+    using SafeERC20 for IWXBTRFLY;
+    using SafeTransferLib for ERC20;
+
     IWXBTRFLY public immutable wxBtrfly;
     ERC20 public immutable xBtrfly;
     ERC20 public immutable btrflyV2;
@@ -73,24 +79,20 @@ contract TokenMigrator {
         staking = IStaking(staking_);
         rlBtrfly = RLBTRFLY(rlBtrfly_);
 
-        xBtrfly.approve(staking_, type(uint256).max);
-        btrflyV2.approve(rlBtrfly_, type(uint256).max);
+        xBtrfly.safeApprove(staking_, type(uint256).max);
+        btrflyV2.safeApprove(rlBtrfly_, type(uint256).max);
     }
 
     /**
         @notice Migrate wxBTRFLY to BTRFLYV2
-        @param  amount      uint256  Amount of wxBTRFLY to convert to BTRFLYV2
-        @return mintAmount  uint256  Amount of BTRFLYV2 to mint
+        @param  amount  uint256  Amount of wxBTRFLY to convert to BTRFLYV2
+        @return         uint256  Amount of BTRFLY to burn
      */
-    function _migrateWxBtrfly(uint256 amount)
-        internal
-        returns (uint256 mintAmount)
-    {
-        // Unwrap wxBTRFLY
-        wxBtrfly.transferFrom(msg.sender, address(this), amount);
-        wxBtrfly.unwrapToBTRFLY(amount);
+    function _migrateWxBtrfly(uint256 amount) internal returns (uint256) {
+        // Take custody of wxBTRFLY and unwrap to BTRFLY
+        wxBtrfly.safeTransferFrom(msg.sender, address(this), amount);
 
-        return amount;
+        return wxBtrfly.unwrapToBTRFLY(amount);
     }
 
     /**
@@ -103,7 +105,7 @@ contract TokenMigrator {
         returns (uint256 mintAmount)
     {
         // Unstake xBTRFLY
-        xBtrfly.transferFrom(msg.sender, address(this), amount);
+        xBtrfly.safeTransferFrom(msg.sender, address(this), amount);
         staking.unstake(amount, false);
 
         return wxBtrfly.wBTRFLYValue(amount);
@@ -118,7 +120,7 @@ contract TokenMigrator {
         internal
         returns (uint256 mintAmount)
     {
-        btrfly.transferFrom(msg.sender, address(this), amount);
+        btrfly.safeTransferFrom(msg.sender, address(this), amount);
 
         return wxBtrfly.wBTRFLYValue(amount);
     }
@@ -146,8 +148,8 @@ contract TokenMigrator {
         uint256 mintAmount;
 
         if (wxAmount != 0) {
-            burnAmount += wxBtrfly.xBTRFLYValue(wxAmount);
-            mintAmount += _migrateWxBtrfly(wxAmount);
+            burnAmount = _migrateWxBtrfly(wxAmount);
+            mintAmount = wxAmount;
         }
 
         if (xAmount != 0) {
@@ -176,7 +178,7 @@ contract TokenMigrator {
         bool lock
     ) internal {
         // If locking, mint BTRFLYV2 for TokenMigrator, who will lock on behalf of recipient
-        mariposa.request(lock ? address(this) : recipient, amount);
+        mariposa.mintFor(lock ? address(this) : recipient, amount);
 
         if (lock) rlBtrfly.lock(recipient, amount);
     }

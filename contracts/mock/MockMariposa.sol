@@ -22,7 +22,7 @@ contract MockMariposa {
         btrfly = btrfly_;
     }
 
-    function request(address _recipient, uint256 amount) external {
+    function mintFor(address _recipient, uint256 amount) external {
         BTRFLYV2(btrfly).mint(_recipient, amount);
     }
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-pragma solidity 0.7.5;
+pragma solidity 0.8.12;
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow
@@ -524,7 +524,7 @@ library Address {
         pure
         returns (string memory)
     {
-        bytes32 _bytes = bytes32(uint256(_address));
+        bytes32 _bytes = bytes32(bytes20(_address));
         bytes memory HEX = "0123456789abcdef";
         bytes memory _addr = new bytes(42);
 

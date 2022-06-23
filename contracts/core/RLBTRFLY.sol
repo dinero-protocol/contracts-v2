@@ -10,7 +10,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 /// @author ████
 
 /**
-    @notice 
+    @notice
     Partially adapted from Convex's CvxLockerV2 contract with some modifications and optimizations for the BTRFLY V2 requirements
 */
 
@@ -67,6 +67,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
     error ZeroAddress();
     error ZeroAmount();
     error IsShutdown();
+    error InvalidNumber(uint256 value);
 
     /**
         @param  _btrflyV2  address  BTRFLYV2 token address
@@ -76,7 +77,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         btrflyV2 = ERC20(_btrflyV2);
     }
 
-    /** 
+    /**
         @notice Emergency method to shutdown the current locker contract which also force-unlock all locked tokens
      */
     function shutdown() external onlyOwner {
@@ -87,7 +88,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         emit Shutdown();
     }
 
-    /** 
+    /**
         @notice Locked balance of the specified account including those with expired locks
         @param  account  address  Account
         @return amount   uint256  Amount
@@ -100,7 +101,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         return balances[account].locked;
     }
 
-    /** 
+    /**
         @notice Balance of the specified account by only including tokens in active locks
         @param  account  address  Account
         @return amount   uint256  Amount
@@ -136,7 +137,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         return amount;
     }
 
-    /** 
+    /**
         @notice Pending locked amount at the specified account
         @param  account  address  Account
         @return amount   uint256  Amount
@@ -161,7 +162,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         return 0;
     }
 
-    /** 
+    /**
         @notice Locked balances details for the specifed account
         @param  account     address          Account
         @return total       uint256          Total amount
@@ -209,7 +210,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         return (block.timestamp / EPOCH_DURATION) * EPOCH_DURATION;
     }
 
-    /** 
+    /**
         @notice Locked tokens cannot be withdrawn for the entire lock duration and are eligible to receive rewards
         @param  account  address  Account
         @param  amount   uint256  Amount
@@ -223,7 +224,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         _lock(account, amount);
     }
 
-    /** 
+    /**
         @notice Perform the actual lock
         @param  account  address  Account
         @param  amount   uint256  Amount
@@ -233,7 +234,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
 
         Balance storage balance = balances[account];
 
-        uint224 lockAmount = uint224(amount);
+        uint224 lockAmount = _toUint224(amount);
 
         balance.locked += lockAmount;
         lockedSupply += lockAmount;
@@ -249,7 +250,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
             locks.push(
                 LockedBalance({
                     amount: lockAmount,
-                    unlockTime: uint32(unlockTime)
+                    unlockTime: _toUint32(unlockTime)
                 })
             );
         } else {
@@ -259,7 +260,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         emit Locked(account, lockEpoch, amount);
     }
 
-    /** 
+    /**
         @notice Withdraw all currently locked tokens where the unlock time has passed
         @param  account     address  Account
         @param  relock      bool     Whether should relock
@@ -278,7 +279,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
 
         if (isShutdown || locks[length - 1].unlockTime <= block.timestamp) {
             locked = userBalance.locked;
-            userBalance.nextUnlockIndex = uint32(length);
+            userBalance.nextUnlockIndex = _toUint32(length);
         } else {
             // Using nextUnlockIndex to reduce the number of loops
             uint32 nextUnlockIndex = userBalance.nextUnlockIndex;
@@ -312,7 +313,7 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         }
     }
 
-    /** 
+    /**
         @notice Withdraw expired locks to a different address
         @param  to  address  Target receiver
      */
@@ -322,11 +323,33 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
         _processExpiredLocks(msg.sender, false, to);
     }
 
-    /** 
+    /**
         @notice Withdraw/relock all currently locked tokens where the unlock time has passed
         @param  relock  bool  Whether should relock
      */
     function processExpiredLocks(bool relock) external nonReentrant {
         _processExpiredLocks(msg.sender, relock, msg.sender);
+    }
+
+    /**
+        @notice Validate and cast a uint256 integer to uint224
+        @param  value  uint256  Value
+        @return        uint224  Casted value
+     */
+    function _toUint224(uint256 value) internal pure returns (uint224) {
+        if (value > type(uint224).max) revert InvalidNumber(value);
+
+        return uint224(value);
+    }
+
+    /**
+        @notice Validate and cast a uint256 integer to uint32
+        @param  value  uint256  Value
+        @return        uint32   Casted value
+     */
+    function _toUint32(uint256 value) internal pure returns (uint32) {
+        if (value > type(uint32).max) revert InvalidNumber(value);
+
+        return uint32(value);
     }
 }
