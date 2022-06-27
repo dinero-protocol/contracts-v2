@@ -24,6 +24,7 @@ contract TokenMigratorTest is Test, Helper {
         bool lock = true;
 
         vm.expectRevert(TokenMigrator.ZeroAddress.selector);
+
         tokenMigrator.migrate(
             tokenAmount,
             tokenAmount,
@@ -55,6 +56,9 @@ contract TokenMigratorTest is Test, Helper {
 
         // Must convert wxAmount to xBTRFLY/BTRFLY value for minting and approval
         uint256 wxAmountBtrfly = WXBTRFLY.xBTRFLYValue(wxAmount);
+
+        // Impersonate BTRFLY's vault in order to mint
+        vm.prank(0x086C98855dF3C78C6b481b6e1D47BeF42E9aC36B);
 
         BTRFLY.mint(address(this), xAmount + v1Amount + wxAmountBtrfly);
         WXBTRFLY.wrapFromBTRFLY(wxAmountBtrfly);
@@ -90,9 +94,11 @@ contract TokenMigratorTest is Test, Helper {
      */
     function testMigrateAmountComparison(uint256 amount) external {
         vm.assume(amount != 0);
-        vm.assume(amount < 1000e9);
+        vm.assume(amount < 100000e9);
 
         // Mint BTRFLY and split the tokens amongst the 3 different token types
+        vm.prank(0x086C98855dF3C78C6b481b6e1D47BeF42E9aC36B);
+
         BTRFLY.mint(address(this), amount * 3);
         REDACTED_STAKING.stake(amount, address(this));
         REDACTED_STAKING.claim(address(this));

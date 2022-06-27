@@ -35,7 +35,6 @@ contract Helper is Test {
 
         vm.prank(0xA52Fd396891E7A74b641a2Cb1A6999Fcf56B077e);
 
-        BTRFLY.setVault(address(this));
         btrflyV2.grantRole(btrflyV2.MINTER_ROLE(), address(mariposa));
         btrflyV2.grantRole(btrflyV2.MINTER_ROLE(), address(this));
 
