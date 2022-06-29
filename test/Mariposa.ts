@@ -260,17 +260,6 @@ describe('Mariposa', function () {
       ).to.be.revertedWith('ZeroAmount()');
     });
 
-    it('Should revert if amount is greater than allowance', async function () {
-      const minter = notAdmin.address;
-      const mintAllowances = await mariposa.mintAllowances(minter);
-      const amount = mintAllowances.add(1);
-
-      expect(mintAllowances.lt(amount)).to.equal(true);
-      await expect(
-        mariposa.decreaseAllowance(minter, amount)
-      ).to.be.revertedWith('UnderflowAllowance()');
-    });
-
     it('Should decrease allowance', async function () {
       const minter = notAdmin.address;
       const mintAllowancesBefore = await mariposa.mintAllowances(minter);

@@ -79,6 +79,12 @@ contract TokenMigratorTest is Test, Helper {
             address(this)
         );
 
+        mariposa.increaseAllowance(
+            address(tokenMigrator),
+            wxAmount +
+                WXBTRFLY.wBTRFLYValue(xAmount) +
+                WXBTRFLY.wBTRFLYValue(v1Amount)
+        );
         tokenMigrator.migrate(
             wxBalance,
             xAmount,
@@ -102,6 +108,12 @@ contract TokenMigratorTest is Test, Helper {
         BTRFLY.mint(address(this), amount * 3);
         REDACTED_STAKING.stake(amount, address(this));
         REDACTED_STAKING.claim(address(this));
+
+        // Increase allowance by the amount of expected BTRFLYV2
+        mariposa.increaseAllowance(
+            address(tokenMigrator),
+            WXBTRFLY.wBTRFLYValue(amount * 3)
+        );
 
         // Migrate to BTRFLYV2 for each token type and track the amount received
         tokenMigrator.migrate(

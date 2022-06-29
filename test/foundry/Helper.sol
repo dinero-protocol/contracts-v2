@@ -12,6 +12,8 @@ import {IStaking} from "contracts/interfaces/IStaking.sol";
 import {TokenMigrator} from "contracts/core/TokenMigrator.sol";
 
 contract Helper is Test {
+    uint256 internal constant SUPPLY_CAP = 52e23;
+
     WXBTRFLY_CONTRACT internal constant WXBTRFLY =
         WXBTRFLY_CONTRACT(0x4B16d95dDF1AE4Fe8227ed7B7E80CF13275e61c9);
     XBTRFLY_CONTRACT internal constant XBTRFLY =
@@ -27,10 +29,8 @@ contract Helper is Test {
     TokenMigrator internal immutable tokenMigrator;
 
     constructor() {
-        uint256 supplyCap = 52e23;
-
         btrflyV2 = new BTRFLYV2();
-        mariposa = new Mariposa(address(btrflyV2), supplyCap);
+        mariposa = new Mariposa(address(btrflyV2), SUPPLY_CAP);
         rlBtrfly = new RLBTRFLY(address(btrflyV2));
 
         vm.prank(0xA52Fd396891E7A74b641a2Cb1A6999Fcf56B077e);
@@ -55,6 +55,5 @@ contract Helper is Test {
         BTRFLY.approve(address(WXBTRFLY), type(uint256).max);
         BTRFLY.approve(address(REDACTED_STAKING), type(uint256).max);
         mariposa.addMinter(address(tokenMigrator));
-        mariposa.increaseAllowance(address(tokenMigrator), supplyCap);
     }
 }
