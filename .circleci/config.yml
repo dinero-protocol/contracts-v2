@@ -44,9 +44,8 @@ jobs:
       - run:
           name: slither-analysis
           command: |
-              set +e
-              python -m slither . --solc-disable-warnings --json slither-analysis.json
-              python -m slither . --solc-disable-warnings --print human-summary,contract-summary
+              python -m slither . --filter-paths "node_modules|contracts/old|contracts/mock|contracts/interface" --solc-disable-warnings --json slither-analysis.json
+              python -m slither . --filter-paths "node_modules|contracts/old|contracts/mock|contracts/interface" --solc-disable-warnings --print human-summary,contract-summary
               exit 0
       - store_artifacts:
           path: slither-analysis.json
