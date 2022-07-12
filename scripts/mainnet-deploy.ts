@@ -143,6 +143,14 @@ async function main() {
   console.log(
     `mariposa: ownership transfer to multisig: ${setMariposaOwner.transactionHash}`
   );
+
+  /**
+   * @dev for testing copy paste to test-contracts-state.ts
+   */
+  console.log(`const btrflyV2Address = '${btrflyV2.address}'`);
+  console.log(`const rlBtrflyAddress = '${rlBtrfly.address}'`);
+  console.log(`const mariposaAddress = '${mariposa.address}' `);
+  console.log(`const tokenMigratorAddress = '${tokenMigrator.address}'`);
 }
 
 main().catch((error) => {
