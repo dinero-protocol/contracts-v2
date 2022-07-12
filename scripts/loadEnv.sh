@@ -1,0 +1,4 @@
+#!/bin/bash
+
+ETHERSCAN_API_KEY=
+FORK_URL=
