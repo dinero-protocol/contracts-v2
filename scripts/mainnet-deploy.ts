@@ -1,12 +1,20 @@
 import { ethers } from 'hardhat';
 import { toBN } from '../test/helpers';
-import { Mariposa, RLBTRFLY, TokenMigrator } from '../typechain';
+import {
+  Mariposa,
+  MockDistributor,
+  RLBTRFLY,
+  TokenMigrator,
+} from '../typechain';
 import { BTRFLYV2 } from '../typechain/BTRFLYV2';
 
 async function main() {
-  //!TODO: Deprecate V1 Contracts ie (Bonds, Staking, Staking Helper, Thecosomata)
-
-  const [deployer] = await ethers.getSigners();
+  /**
+   * @dev settings
+   */
+  const strictDeprecationCheck = false;
+  const totalSupplyOfV1inV2 = toBN(1e18); // !TODO  get correct amount
+  const mariposaCap = ethers.utils.parseEther(toBN(5.2e6).toString()); // 5.2m in 1e18 // !TODO  get correct amount
 
   /**
    * @dev addresses
@@ -18,10 +26,21 @@ async function main() {
   const staking = '0xBdE4Dfb0dbb0Dd8833eFb6C5BD0Ce048C852C487';
 
   /**
-   * @dev constants
+   * @dev before deployment check contracts are deprecated
    */
-  //!TODO: GET SUPPLY CAP FROM POLICY
-  const mariposaCap = ethers.utils.parseEther(toBN(5.2e6).toString()); // 5.2m in 1e18
+  const [deployer] = await ethers.getSigners();
+
+  const distributor = (await ethers.getContractAt(
+    'MockDistributor',
+    '0xB2120AE79d838d6703Cf6d2ac5cC68b5DB10683F'
+  )) as MockDistributor;
+
+  const currentMintingRate = (await distributor.info(0)).rate;
+
+  if (currentMintingRate.toNumber() > 0 && strictDeprecationCheck) {
+    console.log('staking contract not deprecated');
+    process.exit(1);
+  }
 
   /**
    * @dev deploy v2 token
@@ -83,8 +102,6 @@ async function main() {
   ).deployed();
 
   console.log(`tokenMigrator: ${tokenMigrator.address}`);
-
-  const totalSupplyOfV1inV2 = toBN(1e18); // !TODO  get correct amount
 
   const setTokenMigratorAsMinter = await (
     await mariposa.addMinter(tokenMigrator.address)
