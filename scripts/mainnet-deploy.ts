@@ -26,9 +26,9 @@ async function main() {
   /**
    * @dev deploy v2 token
    */
-  const btrflyV2 = (await (
-    await ethers.getContractFactory('BTRFLYV2')
-  ).deploy()) as BTRFLYV2;
+  const btrflyV2 = await (
+    (await (await ethers.getContractFactory('BTRFLYV2')).deploy()) as BTRFLYV2
+  ).deployed();
 
   console.log(`btrflyV2 token: ${btrflyV2.address}`);
 
@@ -36,9 +36,11 @@ async function main() {
    * @dev deploy rlBtrfly
    */
 
-  const rlBtrfly = (await (
-    await ethers.getContractFactory('RLBTRFLY')
-  ).deploy(btrflyV2.address)) as RLBTRFLY;
+  const rlBtrfly = await (
+    (await (
+      await ethers.getContractFactory('RLBTRFLY')
+    ).deploy(btrflyV2.address)) as RLBTRFLY
+  ).deployed();
 
   console.log(`rlBtrfly: ${rlBtrfly.address}`);
 
@@ -46,9 +48,11 @@ async function main() {
    * @dev deploy mariposa and set as minter
    */
 
-  const mariposa = (await (
-    await ethers.getContractFactory('Mariposa')
-  ).deploy(btrflyV2.address, mariposaCap)) as Mariposa;
+  const mariposa = await (
+    (await (
+      await ethers.getContractFactory('Mariposa')
+    ).deploy(btrflyV2.address, mariposaCap)) as Mariposa
+  ).deployed();
 
   console.log(`mariposa: ${mariposa.address}`);
 
@@ -64,17 +68,19 @@ async function main() {
    * @dev deploy token migrator and set mariposa allowance
    */
 
-  const tokenMigrator = (await (
-    await ethers.getContractFactory('TokenMigrator')
-  ).deploy(
-    wxBtrfly,
-    xBtrfly,
-    btrflyV2.address,
-    btrflyAddress,
-    mariposa.address,
-    staking,
-    rlBtrfly.address
-  )) as TokenMigrator;
+  const tokenMigrator = await (
+    (await (
+      await ethers.getContractFactory('TokenMigrator')
+    ).deploy(
+      wxBtrfly,
+      xBtrfly,
+      btrflyV2.address,
+      btrflyAddress,
+      mariposa.address,
+      staking,
+      rlBtrfly.address
+    )) as TokenMigrator
+  ).deployed();
 
   console.log(`tokenMigrator: ${tokenMigrator.address}`);
 
