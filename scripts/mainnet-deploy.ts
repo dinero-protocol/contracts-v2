@@ -10,7 +10,7 @@ import { BTRFLYV2 } from '../typechain/BTRFLYV2';
 
 async function main() {
   /**
-   * @dev settings
+   * @dev params
    */
   const strictDeprecationCheck = false;
   const totalSupplyOfV1inV2 = toBN(1e18); // !TODO  get correct amount
@@ -46,9 +46,11 @@ async function main() {
   /**
    * @dev deploy v2 token
    */
-  const btrflyV2 = await (
-    (await (await ethers.getContractFactory('BTRFLYV2')).deploy()) as BTRFLYV2
-  ).deployed();
+  const btrflyV2 = (await (
+    await ethers.getContractFactory('BTRFLYV2')
+  ).deploy()) as BTRFLYV2;
+
+  await btrflyV2.deployed();
 
   console.log(`btrflyV2 token: ${btrflyV2.address}`);
 
@@ -56,11 +58,11 @@ async function main() {
    * @dev deploy rlBtrfly
    */
 
-  const rlBtrfly = await (
-    (await (
-      await ethers.getContractFactory('RLBTRFLY')
-    ).deploy(btrflyV2.address)) as RLBTRFLY
-  ).deployed();
+  const rlBtrfly = (await (
+    await ethers.getContractFactory('RLBTRFLY')
+  ).deploy(btrflyV2.address)) as RLBTRFLY;
+
+  await rlBtrfly.deployed();
 
   console.log(`rlBtrfly: ${rlBtrfly.address}`);
 
@@ -68,11 +70,11 @@ async function main() {
    * @dev deploy mariposa and set as minter
    */
 
-  const mariposa = await (
-    (await (
-      await ethers.getContractFactory('Mariposa')
-    ).deploy(btrflyV2.address, mariposaCap)) as Mariposa
-  ).deployed();
+  const mariposa = (await (
+    await ethers.getContractFactory('Mariposa')
+  ).deploy(btrflyV2.address, mariposaCap)) as Mariposa;
+
+  await mariposa.deployed();
 
   console.log(`mariposa: ${mariposa.address}`);
 
@@ -88,19 +90,19 @@ async function main() {
    * @dev deploy token migrator and set mariposa allowance
    */
 
-  const tokenMigrator = await (
-    (await (
-      await ethers.getContractFactory('TokenMigrator')
-    ).deploy(
-      wxBtrflyAddress,
-      xBtrflyAddress,
-      btrflyV2.address,
-      btrflyAddress,
-      mariposa.address,
-      stakingAddress,
-      rlBtrfly.address
-    )) as TokenMigrator
-  ).deployed();
+  const tokenMigrator = (await (
+    await ethers.getContractFactory('TokenMigrator')
+  ).deploy(
+    wxBtrflyAddress,
+    xBtrflyAddress,
+    btrflyV2.address,
+    btrflyAddress,
+    mariposa.address,
+    stakingAddress,
+    rlBtrfly.address
+  )) as TokenMigrator;
+
+  await tokenMigrator.deployed();
 
   console.log(`tokenMigrator: ${tokenMigrator.address}`);
 
