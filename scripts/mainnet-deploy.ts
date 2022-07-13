@@ -21,9 +21,10 @@ async function main() {
    */
   const multisigAddress = '0xA52Fd396891E7A74b641a2Cb1A6999Fcf56B077e';
   const btrflyAddress = '0xC0d4Ceb216B3BA9C3701B291766fDCbA977ceC3A';
-  const xBtrfly = '0xCC94Faf235cC5D3Bf4bEd3a30db5984306c86aBC';
-  const wxBtrfly = '0x4B16d95dDF1AE4Fe8227ed7B7E80CF13275e61c9';
-  const staking = '0xBdE4Dfb0dbb0Dd8833eFb6C5BD0Ce048C852C487';
+  const xBtrflyAddress = '0xCC94Faf235cC5D3Bf4bEd3a30db5984306c86aBC';
+  const wxBtrflyAddress = '0x4B16d95dDF1AE4Fe8227ed7B7E80CF13275e61c9';
+  const stakingAddress = '0xBdE4Dfb0dbb0Dd8833eFb6C5BD0Ce048C852C487';
+  const distributorAddress = '0xB2120AE79d838d6703Cf6d2ac5cC68b5DB10683F';
 
   /**
    * @dev before deployment check contracts are deprecated
@@ -32,7 +33,7 @@ async function main() {
 
   const distributor = (await ethers.getContractAt(
     'MockDistributor',
-    '0xB2120AE79d838d6703Cf6d2ac5cC68b5DB10683F'
+    distributorAddress
   )) as MockDistributor;
 
   const currentMintingRate = (await distributor.info(0)).rate;
@@ -91,12 +92,12 @@ async function main() {
     (await (
       await ethers.getContractFactory('TokenMigrator')
     ).deploy(
-      wxBtrfly,
-      xBtrfly,
+      wxBtrflyAddress,
+      xBtrflyAddress,
       btrflyV2.address,
       btrflyAddress,
       mariposa.address,
-      staking,
+      stakingAddress,
       rlBtrfly.address
     )) as TokenMigrator
   ).deployed();
