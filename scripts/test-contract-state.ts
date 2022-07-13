@@ -1,6 +1,13 @@
 import { ethers } from 'hardhat';
 import { toBN } from '../test/helpers';
 import { BTRFLYV2, Mariposa, RLBTRFLY, TokenMigrator } from '../typechain';
+import {
+  btrflyAddress,
+  multisigAddress,
+  stakingAddress,
+  wxBtrflyAddress,
+  xBtrflyAddress,
+} from './constants';
 
 type Error = {
   error: string;
@@ -10,7 +17,7 @@ type Error = {
 async function main() {
   const errors: Error[] = [];
   /**
-   * @dev contract addresses for V2
+   * @dev Contract addresses for deployed contracts. Copy paste from log from mainnet-deploy.ts
    */
 
   const btrflyV2Address = '0x3f458FDD6D5E13Af5D6f966A338bf9373a248336';
@@ -18,17 +25,9 @@ async function main() {
   const mariposaAddress = '0x4AF2FE91Ef78e76c91aa77eF5b43973eAb371A66';
   const tokenMigratorAddress = '0x63e9882E1D996D7b87F8690BE6E5C1b08205ae13';
 
-  //!TODO: Double Check
-
-  const btrflyAddress = '0xC0d4Ceb216B3BA9C3701B291766fDCbA977ceC3A';
-  const xBtrfly = '0xCC94Faf235cC5D3Bf4bEd3a30db5984306c86aBC';
-  const wxBtrfly = '0x4B16d95dDF1AE4Fe8227ed7B7E80CF13275e61c9';
-  const staking = '0xBdE4Dfb0dbb0Dd8833eFb6C5BD0Ce048C852C487';
-
   // !TODO  get correct amounts
   const mariposaCap = ethers.utils.parseEther(toBN(5.2e6).toString()); // 5.2m in 1e18
   const totalSupplyOfV1inV2 = toBN(1e18);
-  const multisigAddress = '0xA52Fd396891E7A74b641a2Cb1A6999Fcf56B077e';
 
   const [deployer] = await ethers.getSigners();
 
@@ -143,7 +142,8 @@ async function main() {
    */
 
   const iswxBtrflySetCorrect =
-    (await tokenMigrator.wxBtrfly()).toLowerCase() === wxBtrfly.toLowerCase();
+    (await tokenMigrator.wxBtrfly()).toLowerCase() ===
+    wxBtrflyAddress.toLowerCase();
 
   if (!iswxBtrflySetCorrect) {
     errors.push({
@@ -153,7 +153,8 @@ async function main() {
   }
 
   const isxBtrflySetCorrect =
-    (await tokenMigrator.xBtrfly()).toLowerCase() === xBtrfly.toLowerCase();
+    (await tokenMigrator.xBtrfly()).toLowerCase() ===
+    xBtrflyAddress.toLowerCase();
 
   if (!isxBtrflySetCorrect) {
     errors.push({
@@ -196,7 +197,8 @@ async function main() {
   }
 
   const isStakingSetCorrect =
-    (await tokenMigrator.staking()).toLowerCase() === staking.toLowerCase();
+    (await tokenMigrator.staking()).toLowerCase() ===
+    stakingAddress.toLowerCase();
 
   if (!isStakingSetCorrect) {
     errors.push({

@@ -7,6 +7,14 @@ import {
   TokenMigrator,
 } from '../typechain';
 import { BTRFLYV2 } from '../typechain/BTRFLYV2';
+import {
+  btrflyAddress,
+  distributorAddress,
+  multisigAddress,
+  stakingAddress,
+  wxBtrflyAddress,
+  xBtrflyAddress,
+} from './constants';
 
 async function main() {
   /**
@@ -17,22 +25,13 @@ async function main() {
   const mariposaCap = ethers.utils.parseEther(toBN(5.2e6).toString()); // 5.2m in 1e18 // !TODO  get correct amount
 
   /**
-   * @dev addresses
-   */
-  const multisigAddress = '0xA52Fd396891E7A74b641a2Cb1A6999Fcf56B077e';
-  const btrflyAddress = '0xC0d4Ceb216B3BA9C3701B291766fDCbA977ceC3A';
-  const xBtrfly = '0xCC94Faf235cC5D3Bf4bEd3a30db5984306c86aBC';
-  const wxBtrfly = '0x4B16d95dDF1AE4Fe8227ed7B7E80CF13275e61c9';
-  const staking = '0xBdE4Dfb0dbb0Dd8833eFb6C5BD0Ce048C852C487';
-
-  /**
    * @dev before deployment check contracts are deprecated
    */
   const [deployer] = await ethers.getSigners();
 
   const distributor = (await ethers.getContractAt(
     'MockDistributor',
-    '0xB2120AE79d838d6703Cf6d2ac5cC68b5DB10683F'
+    distributorAddress
   )) as MockDistributor;
 
   const currentMintingRate = (await distributor.info(0)).rate;
@@ -91,12 +90,12 @@ async function main() {
     (await (
       await ethers.getContractFactory('TokenMigrator')
     ).deploy(
-      wxBtrfly,
-      xBtrfly,
+      wxBtrflyAddress,
+      xBtrflyAddress,
       btrflyV2.address,
       btrflyAddress,
       mariposa.address,
-      staking,
+      stakingAddress,
       rlBtrfly.address
     )) as TokenMigrator
   ).deployed();
