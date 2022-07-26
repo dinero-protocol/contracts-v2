@@ -2,9 +2,9 @@
 pragma solidity 0.8.12;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@rari-capital/solmate/src/utils/ReentrancyGuard.sol";
+import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /// @title RewardDistributor
@@ -16,7 +16,7 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
 */
 
 contract RewardDistributor is Ownable, ReentrancyGuard {
-    using SafeERC20 for IERC20;
+    using SafeTransferLib for ERC20;
 
     struct Distribution {
         address token;
@@ -155,9 +155,8 @@ contract RewardDistributor is Ownable, ReentrancyGuard {
 
         // Check whether the reward is in the form of native tokens or ERC20
         // by checking if the token address is set to the Multisig or not
-        address token = reward.token;
         if (token != MULTISIG) {
-            IERC20(token).safeTransfer(account, claimable);
+            ERC20(token).safeTransfer(account, claimable);
         } else {
             (bool sent, ) = payable(account).call{value: claimable}("");
             require(sent, "Failed to transfer to account");
