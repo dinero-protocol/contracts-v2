@@ -19,7 +19,6 @@ contract RewardDistributor is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     struct Distribution {
-        bytes32 identifier;
         address token;
         bytes32 merkleRoot;
         bytes32 proof;
@@ -33,7 +32,7 @@ contract RewardDistributor is Ownable, ReentrancyGuard {
     }
 
     struct Claim {
-        bytes32 identifier;
+        address token;
         address account;
         uint256 amount;
         bytes32[] merkleProof;
@@ -42,13 +41,12 @@ contract RewardDistributor is Ownable, ReentrancyGuard {
     // Address of the Multisig (also as the primary source of rewards)
     address public immutable MULTISIG;
 
-    // Maps each of the identifier to its reward metadata
-    mapping(bytes32 => Reward) public rewards;
-    // Tracks the amount of claimed reward for the specified identifier+account
-    mapping(bytes32 => mapping(address => uint256)) public claimed;
+    // Maps each of the token address to its reward metadata
+    mapping(address => Reward) public rewards;
+    // Tracks the amount of claimed reward for the specified token address + account
+    mapping(address => mapping(address => uint256)) public claimed;
 
     event RewardClaimed(
-        bytes32 indexed identifier,
         address indexed token,
         address indexed account,
         uint256 amount,
@@ -56,7 +54,6 @@ contract RewardDistributor is Ownable, ReentrancyGuard {
     );
 
     event RewardMetadataUpdated(
-        bytes32 indexed identifier,
         address indexed token,
         bytes32 merkleRoot,
         bytes32 proof,
@@ -84,7 +81,7 @@ contract RewardDistributor is Ownable, ReentrancyGuard {
 
         for (uint256 i; i < claims.length; ++i) {
             _claim(
-                claims[i].identifier,
+                claims[i].token,
                 claims[i].account,
                 claims[i].amount,
                 claims[i].merkleProof
@@ -105,14 +102,13 @@ contract RewardDistributor is Ownable, ReentrancyGuard {
         for (uint256 i; i < distributions.length; ++i) {
             // Update the metadata and also increment the update counter
             Distribution calldata distribution = distributions[i];
-            Reward storage reward = rewards[distribution.identifier];
+            Reward storage reward = rewards[distribution.token];
             reward.token = distribution.token;
             reward.merkleRoot = distribution.merkleRoot;
             reward.proof = distribution.proof;
             ++reward.updateCount;
 
             emit RewardMetadataUpdated(
-                distribution.identifier,
                 distribution.token,
                 distribution.merkleRoot,
                 distribution.proof,
@@ -123,18 +119,18 @@ contract RewardDistributor is Ownable, ReentrancyGuard {
 
     /**
         @notice Claim a reward
-        @param  identifier   bytes32    Merkle identifier
+        @param  token        address    Token address
         @param  account      address    Eligible user account
         @param  amount       uint256    Reward amount
         @param  merkleProof  bytes32[]  Merkle proof
      */
     function _claim(
-        bytes32 identifier,
+        address token,
         address account,
         uint256 amount,
         bytes32[] calldata merkleProof
     ) private {
-        Reward memory reward = rewards[identifier];
+        Reward memory reward = rewards[token];
 
         require(reward.merkleRoot != 0, "Distribution not enabled");
 
@@ -149,13 +145,13 @@ contract RewardDistributor is Ownable, ReentrancyGuard {
         );
 
         // Verify the claimable amount
-        require(claimed[identifier][account] < amount, "No claimable reward");
+        require(claimed[token][account] < amount, "No claimable reward");
 
         // Calculate the claimable amount based off the total of reward (used in the merkle tree)
         // since the beginning for the user, minus the total claimed so far
-        uint256 claimable = amount - claimed[identifier][account];
+        uint256 claimable = amount - claimed[token][account];
         // Update the claimed amount to the current total
-        claimed[identifier][account] = amount;
+        claimed[token][account] = amount;
 
         // Check whether the reward is in the form of native tokens or ERC20
         // by checking if the token address is set to the Multisig or not
@@ -168,7 +164,6 @@ contract RewardDistributor is Ownable, ReentrancyGuard {
         }
 
         emit RewardClaimed(
-            identifier,
             token,
             account,
             claimable,
