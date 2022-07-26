@@ -21,7 +21,6 @@ async function main() {
    * @dev params
    */
   const strictDeprecationCheck = false;
-  const totalSupplyOfV1inV2 = toBN(1e18); // !TODO  get correct amount
   const mariposaCap = ethers.utils.parseEther(toBN(5.2e6).toString()); // 5.2m in 1e18 // !TODO  get correct amount
 
   /**
@@ -110,14 +109,6 @@ async function main() {
     `mariposa: set token migrator as minter: ${setTokenMigratorAsMinter.transactionHash}`
   );
 
-  const increaseAllowanceOfTokenMigrator = await (
-    await mariposa.increaseAllowance(tokenMigrator.address, totalSupplyOfV1inV2)
-  ).wait();
-
-  console.log(
-    `mariposa: set allowance of tokenMigrator: ${increaseAllowanceOfTokenMigrator.transactionHash}`
-  );
-
   /**
    * @dev revoke all deployer permissions and set redacted multisig as owner
    */
@@ -167,6 +158,8 @@ async function main() {
   console.log(`const rlBtrflyAddress = '${rlBtrfly.address}'`);
   console.log(`const mariposaAddress = '${mariposa.address}' `);
   console.log(`const tokenMigratorAddress = '${tokenMigrator.address}'`);
+
+  //!TODO: SET TOKEN MIGRATOR ALLOWANCE TO TOTAL SUPPLY OF V1
 }
 
 main().catch((error) => {
