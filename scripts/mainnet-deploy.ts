@@ -3,6 +3,7 @@ import { toBN } from '../test/helpers';
 import {
   Mariposa,
   MockDistributor,
+  RewardDistributor,
   RLBTRFLY,
   TokenMigrator,
 } from '../typechain';
@@ -110,6 +111,18 @@ async function main() {
   );
 
   /**
+   * @dev deploy reward distributor
+   */
+
+  const rewardDistributor = (await (
+    await ethers.getContractFactory('RewardDistributor')
+  ).deploy(multisigAddress)) as RewardDistributor;
+
+  await rewardDistributor.deployed();
+
+  console.log(`rewards distributor: ${rewardDistributor.address}`);
+
+  /**
    * @dev revoke all deployer permissions and set redacted multisig as owner
    */
 
@@ -151,6 +164,13 @@ async function main() {
     `mariposa: ownership transfer to multisig: ${setMariposaOwner.transactionHash}`
   );
 
+  const setRewardDistributorOwner = await (
+    await rewardDistributor.transferOwnership(multisigAddress)
+  ).wait();
+
+  console.log(
+    `reward distributor: ownership transfer to multisig: ${setRewardDistributorOwner.transactionHash}`
+  );
   /**
    * @dev for testing copy paste to test-contracts-state.ts
    */
@@ -158,6 +178,9 @@ async function main() {
   console.log(`const rlBtrflyAddress = '${rlBtrfly.address}'`);
   console.log(`const mariposaAddress = '${mariposa.address}' `);
   console.log(`const tokenMigratorAddress = '${tokenMigrator.address}'`);
+  console.log(
+    `const rewardDistributorAddress = '${rewardDistributor.address}'`
+  );
 
   //!TODO: SET TOKEN MIGRATOR ALLOWANCE TO TOTAL SUPPLY OF V1
 }

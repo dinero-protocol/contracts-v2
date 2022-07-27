@@ -1,6 +1,12 @@
 import { ethers } from 'hardhat';
 import { toBN } from '../test/helpers';
-import { BTRFLYV2, Mariposa, RLBTRFLY, TokenMigrator } from '../typechain';
+import {
+  BTRFLYV2,
+  Mariposa,
+  RewardDistributor,
+  RLBTRFLY,
+  TokenMigrator,
+} from '../typechain';
 import {
   btrflyAddress,
   multisigAddress,
@@ -20,10 +26,11 @@ async function main() {
    * @dev Contract addresses for deployed contracts. Copy paste from log from mainnet-deploy.ts
    */
 
-  const btrflyV2Address = '0x3f458FDD6D5E13Af5D6f966A338bf9373a248336';
-  const rlBtrflyAddress = '0x1b22d7162067A0FaeCc21b5d84421c1e383eAa56';
-  const mariposaAddress = '0x4AF2FE91Ef78e76c91aa77eF5b43973eAb371A66';
-  const tokenMigratorAddress = '0x63e9882E1D996D7b87F8690BE6E5C1b08205ae13';
+  const btrflyV2Address = '0x554978ebd620065ce37B054bE21B6faD78C60e06';
+  const rlBtrflyAddress = '0x06feE6f5961eCDAF0D220fEfdF43bbd9dDfa0BE9';
+  const mariposaAddress = '0xF69a87ED2549591A97c3F91F031950e391eD3b36';
+  const tokenMigratorAddress = '0x238c0548e53a21fAD65F68E326E42caBB896887b';
+  const rewardDistributorAddress = '0x2f4a17C18E62fCCA32D131547b454cB9c3344876';
 
   // !TODO  get correct amounts
   const mariposaCap = ethers.utils.parseEther(toBN(5.2e6).toString()); // 5.2m in 1e18
@@ -50,6 +57,11 @@ async function main() {
     'TokenMigrator',
     tokenMigratorAddress
   )) as TokenMigrator;
+
+  const rewardDistributor = (await ethers.getContractAt(
+    'RewardDistributor',
+    rewardDistributorAddress
+  )) as RewardDistributor;
 
   /**
    * @dev btrflyV2 permissions
@@ -215,6 +227,32 @@ async function main() {
     errors.push({
       contract: 'token migrator',
       error: 'rlBtrfly not set properly',
+    });
+  }
+
+  /**
+   * @dev rewards distributor set up
+   */
+
+  const isRewardsDistributorMultisigSetCorrect =
+    (await rewardDistributor.MULTISIG()).toLocaleLowerCase() ===
+    multisigAddress.toLowerCase();
+
+  if (!isRewardsDistributorMultisigSetCorrect) {
+    errors.push({
+      contract: 'reward distributor',
+      error: 'multisig not set correct',
+    });
+  }
+
+  const isRewardsDistributorOwnershipSetCorrect =
+    (await rewardDistributor.owner()).toLowerCase() ===
+    multisigAddress.toLowerCase();
+
+  if (!isRewardsDistributorOwnershipSetCorrect) {
+    errors.push({
+      contract: 'reward distributor',
+      error: 'owner not multisig',
     });
   }
 
