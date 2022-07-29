@@ -47,6 +47,9 @@ before(async function () {
   const mariposa = await (
     await ethers.getContractFactory('Mariposa')
   ).deploy(btrflyV2.address, mariposaCap);
+  const rewardDistributor = await (
+    await ethers.getContractFactory('RewardDistributor')
+  ).deploy(admin.address);
 
   // Fund the admin address with some BTRFLYV2 for RL TEST
   await btrflyV2.grantRole(await btrflyV2.MINTER_ROLE(), admin.address);
@@ -69,6 +72,7 @@ before(async function () {
   this.btrflyV2 = btrflyV2;
   this.rlBtrfly = rlBtrfly;
   this.mariposa = mariposa;
+  this.rewardDistributor = rewardDistributor;
   this.mariposaSupplyCap = mariposaCap;
   this.zeroAddress = '0x0000000000000000000000000000000000000000';
   this.redactedMultisig = '0xA52Fd396891E7A74b641a2Cb1A6999Fcf56B077e';
