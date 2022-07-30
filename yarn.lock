@@ -977,6 +977,11 @@
   "resolved" "https://registry.npmjs.org/@types/chai/-/chai-4.3.0.tgz"
   "version" "4.3.0"
 
+"@types/checksum@^0.1.33":
+  "integrity" "sha512-fe6ZaTTh2Qk6J68EOKGz992sw6Y+sGK86skRTT4tz9Wxby6owinOXzHE73wBOw/ln7ty4rTbxjHx0RwjIM1LKw=="
+  "resolved" "https://registry.npmjs.org/@types/checksum/-/checksum-0.1.33.tgz"
+  "version" "0.1.33"
+
 "@types/concat-stream@^1.6.0":
   "integrity" "sha512-eHE4cQPoj6ngxBZMvVf6Hw7Mh4jMW4U9lpGmS5GBPB9RYxlFg+CHaVN7ErNY4W9XfLIEn20b4VDYaIrbq0q4uA=="
   "resolved" "https://registry.npmjs.org/@types/concat-stream/-/concat-stream-1.6.1.tgz"
@@ -1623,9 +1628,9 @@
     "lodash" "^4.17.11"
 
 "async@^2.4.0":
-  "integrity" "sha512-zflvls11DCy+dQWzTW2dzuilv8Z5X/pjfmZOWba6TNIVDm+2UDaJmXSOXlasHKfNBs8oo3M0aT50fDEWfKZjXg=="
-  "resolved" "https://registry.npmjs.org/async/-/async-2.6.3.tgz"
-  "version" "2.6.3"
+  "integrity" "sha512-mzo5dfJYwAn29PeiJ0zvwTo04zj8HDJj0Mn8TD7sno7q12prdbnasKJHhkm2c1LgrhlJ0teaea8860oxi51mGA=="
+  "resolved" "https://registry.npmjs.org/async/-/async-2.6.4.tgz"
+  "version" "2.6.4"
   dependencies:
     "lodash" "^4.17.14"
 
@@ -2695,6 +2700,13 @@
   "version" "1.1.0"
   dependencies:
     "functional-red-black-tree" "^1.0.1"
+
+"checksum@^1.0.0":
+  "integrity" "sha512-68bHejnM/sBQhjXcXd2mFusICnqAwikZ9RVMURIacWh7moNjgOdHKimS6yk30Np/PwfR00dceY4b1GwWanu5cg=="
+  "resolved" "https://registry.npmjs.org/checksum/-/checksum-1.0.0.tgz"
+  "version" "1.0.0"
+  dependencies:
+    "optimist" "~0.3.5"
 
 "chokidar@^3.4.0", "chokidar@3.5.3":
   "integrity" "sha512-Dr3sfKRP6oTcjf2JmUmFJfeVMvXBdegxB0iVQ5eb2V10uFJUCAS8OByZdVAyVb8xXNz3GjjTgj9kLWsZTqE6kw=="
@@ -7509,6 +7521,13 @@
     "is-docker" "^2.0.0"
     "is-wsl" "^2.1.1"
 
+"optimist@~0.3.5":
+  "integrity" "sha512-TCx0dXQzVtSCg2OgY/bO9hjM9cV4XYx09TVK+s3+FhkjT6LovsLe+pPMzpWf+6yXK/hUizs2gUoTw3jHM0VaTQ=="
+  "resolved" "https://registry.npmjs.org/optimist/-/optimist-0.3.7.tgz"
+  "version" "0.3.7"
+  dependencies:
+    "wordwrap" "~0.0.2"
+
 "optionator@^0.8.1":
   "integrity" "sha512-+IW9pACdk3XWmmTXG8m3upGUJst5XRGzxMRjXzAuJ1XnIFNvfhjjIuYkDvysnPQ7qzqVzLt78BCruntqRhWQbA=="
   "resolved" "https://registry.npmjs.org/optionator/-/optionator-0.8.3.tgz"
@@ -10734,6 +10753,11 @@
   "integrity" "sha1-J1hIEIkUVqQXHI0CJkQa3pDLyus="
   "resolved" "https://registry.npmjs.org/wordwrap/-/wordwrap-1.0.0.tgz"
   "version" "1.0.0"
+
+"wordwrap@~0.0.2":
+  "integrity" "sha512-1tMA907+V4QmxV7dbRvb4/8MaRALK6q9Abid3ndMYnbyo8piisCmeONVqVSXqQA3KaP4SLt5b7ud6E2sqP8TFw=="
+  "resolved" "https://registry.npmjs.org/wordwrap/-/wordwrap-0.0.3.tgz"
+  "version" "0.0.3"
 
 "workerpool@6.2.0":
   "integrity" "sha512-Rsk5qQHJ9eowMH28Jwhe8HEbmdYDX4lwoMWshiCXugjtHqMD9ZbiqSDLxcsfdqsETPzVUtX5s1Z5kStiIM6l4A=="
