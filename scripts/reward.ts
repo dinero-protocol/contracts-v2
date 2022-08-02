@@ -3,10 +3,42 @@ import checksum from 'checksum';
 import { ethers } from 'hardhat';
 import fs from 'fs';
 import { BalanceTree } from '../lib/merkle';
-import { ERC20, Multicall, Multicall__factory, RLBTRFLY } from '../typechain';
-import { parseLog } from '../test/helpers';
+import {
+  Multicall,
+  Multicall__factory,
+  RLBTRFLY,
+  RewardDistributor,
+} from '../typechain';
 import { BigNumber, utils } from 'ethers';
-import { multisigAddress } from './constants';
+
+// Used for parsing Transfer event log via `parseLog`
+const erc20Abi = [
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'from',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'to',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    name: 'Transfer',
+    type: 'event',
+  },
+];
 
 const fsMkdirAsync = <(path: fs.PathLike, options: any) => void>(
   Promise.promisify(fs.mkdir)
@@ -25,6 +57,7 @@ const provider = new ethers.providers.StaticJsonRpcProvider(
 );
 const rlBtrflyAddress = '0xb4ce286398c3eebde71c63a6a925d7823821c1ee';
 const multicallAddress = '0x77dca2c955b15e9de4dbbcf1246b4b85b651e50e';
+const rewardDistributorAddress = '0xd756dfc1a5afd5e36cf88872540778841b318894';
 const minBlock = 7311342; // Block for the actual snapshot
 const maxBlock = 7311742; // Block for the relock threshold snapshot
 const deadline = 1659117600; // Epoch timestamp for the actual snapshot
@@ -35,8 +68,8 @@ const currentDir = `${dataDir}/${deadline}`;
 
 // List of tx hashes used for sending in rewards for the current snapshot
 const txHashes = [
-  '0x0e0869435d525f5f4218a2954e0fc33d9dbdd4677c16c029909b709411b67981',
-  '0x8dea0e0bc7fd79668b034251d79d1b3703692a08869cb2c42ba8d57b4e36aaf5',
+  '0xc2d3d650696e0f7379422060cfb6d82ccfc25a0d37606e708a12af6d6b853ce5',
+  '0x2e75d0f47ed803112ce1dd35e403b938b2112ad6d07a8d219baae4921631d8e8',
 ];
 // Transfer event hash used to filter out all ERC20 Transfer events
 const erc20TransferHash =
@@ -77,12 +110,12 @@ async function main() {
     multicallAddress,
     provider
   ) as Multicall;
+  const rewardDistributor = (await ethers.getContractAt(
+    'RewardDistributor',
+    rewardDistributorAddress
+  )) as RewardDistributor;
 
-  // Need this to parse the event logs properly
-  const erc20 = (await ethers.getContractAt(
-    '@rari-capital/solmate/src/tokens/ERC20.sol:ERC20',
-    '0x5829435707acedb5260aa0a4f619c377bd577f8c' // Can be any valid ERC20 token address
-  )) as ERC20;
+  const multisigAddress = await rewardDistributor.MULTISIG();
 
   // Get unique list of lockers from the very beginning
   const lockedEvents = await rlBtrfly.queryFilter(rlBtrfly.filters.Locked());
@@ -211,7 +244,7 @@ async function main() {
       const hash = log.topics[0];
 
       if (hash === erc20TransferHash) {
-        const params = parseLog(erc20, log);
+        const params = new ethers.utils.Interface(erc20Abi).parseLog(log);
         const [from, to, amount] = params.args;
         console.log('Token Transfer', token, from, to, amount);
 
