@@ -103,6 +103,13 @@ const config: HardhatUserConfig = {
         mnemonic: process.env.SEED,
       },
     },
+    mainnet: {
+      url: process.env.MAINNET_URL,
+      gasPrice: 80000000000,
+
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
   },
   mocha: {
     timeout: 60000,
