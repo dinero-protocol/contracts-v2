@@ -98,7 +98,6 @@ const config: HardhatUserConfig = {
       forking: {
         url:
           process.env.MAINNET_URL !== undefined ? process.env.MAINNET_URL : '',
-        blockNumber: 14456597,
       },
       accounts: {
         mnemonic: process.env.SEED,
