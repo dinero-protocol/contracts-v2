@@ -1,5 +1,4 @@
 import { ethers } from 'hardhat';
-import { toBN } from '../test/helpers';
 import {
   Mariposa,
   MockDistributor,
@@ -11,6 +10,7 @@ import { BTRFLYV2 } from '../typechain/BTRFLYV2';
 import {
   btrflyAddress,
   distributorAddress,
+  mariposaCap,
   multisigAddress,
   stakingAddress,
   wxBtrflyAddress,
@@ -21,8 +21,7 @@ async function main() {
   /**
    * @dev params
    */
-  const strictDeprecationCheck = false;
-  const mariposaCap = ethers.utils.parseEther(toBN(5.2e6).toString()); // 5.2m in 1e18 // !TODO  get correct amount
+  const strictDeprecationCheck = true;
 
   /**
    * @dev before deployment check contracts are deprecated

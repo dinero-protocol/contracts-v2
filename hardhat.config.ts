@@ -98,11 +98,17 @@ const config: HardhatUserConfig = {
       forking: {
         url:
           process.env.MAINNET_URL !== undefined ? process.env.MAINNET_URL : '',
-        blockNumber: 14456597,
       },
       accounts: {
         mnemonic: process.env.SEED,
       },
+    },
+    mainnet: {
+      url: process.env.MAINNET_URL,
+      gasPrice: 80000000000,
+
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
   },
   mocha: {
