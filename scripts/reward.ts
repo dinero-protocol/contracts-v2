@@ -3,6 +3,8 @@ import checksum from 'checksum';
 import { ethers } from 'hardhat';
 import fs from 'fs';
 import path from 'path';
+import { BigNumber, utils } from 'ethers';
+
 import { BalanceTree } from '../lib/merkle';
 import {
   Multicall,
@@ -10,7 +12,7 @@ import {
   RLBTRFLY,
   RewardDistributor,
 } from '../typechain';
-import { BigNumber, utils } from 'ethers';
+import { setUserRewards } from './helpers/redis';
 
 // Used for parsing Transfer event log via `parseLog`
 const erc20Abi = [
@@ -58,16 +60,18 @@ const checksumAsync = <(file: string, options: any) => void>(
   Promise.promisify(checksum.file)
 );
 
+const { MAINNET_URL, GOERLI_URL } = process.env;
+const providerUrl =
+  process.env.NODE_ENV !== 'production' ? GOERLI_URL : MAINNET_URL;
+const provider = new ethers.providers.StaticJsonRpcProvider(providerUrl);
+
 // TODO: Should replace with mainnet values on production
-const provider = new ethers.providers.StaticJsonRpcProvider(
-  'https://eth-goerli.g.alchemy.com/v2/maPcegLiAfXMtMm6OcjbnfLFNG9afF2E'
-);
 const rlBtrflyAddress = '0xb4ce286398c3eebde71c63a6a925d7823821c1ee';
 const multicallAddress = '0x77dca2c955b15e9de4dbbcf1246b4b85b651e50e';
 const rewardDistributorAddress = '0xd756dfc1a5afd5e36cf88872540778841b318894';
 const minBlock = 7348145; // Block for the locked balance snapshot
 const maxBlock = 7348445; // Block for the relocked balance snapshot
-const deadline = 1659663030; // Epoch timestamp for the current snapshot
+const deadline = 1659117600; // Epoch timestamp for the current snapshot
 const previousDeadline = 0; // Epoch timestamp for the previous snapshot
 
 // Used for storing cached distribution data
@@ -128,7 +132,7 @@ async function main() {
     rewardDistributorAddress
   )) as RewardDistributor;
 
-  const multisigAddress = await rewardDistributor.MULTISIG();
+  const multisigAddress = (await rewardDistributor.MULTISIG()).toLowerCase();
 
   // Get unique list of lockers from the very beginning
   const lockedEvents = await rlBtrfly.queryFilter(rlBtrfly.filters.Locked());
@@ -360,9 +364,10 @@ async function main() {
       const proof = hashedDistributions.getProof(account, amount);
 
       const data = {
-        amount,
         token,
         proof,
+        amount: amount.toString(),
+        chainId: 1, // Fixed to mainnet for now
       };
 
       if (account in claimMetadata) {
@@ -401,7 +406,10 @@ async function main() {
   });
   console.log('Calldata', transformedCallParams);
 
-  // console.log(claimMetadata);
+  // Update the user reward records
+  await Promise.each(Object.keys(claimMetadata), async (account) => {
+    await setUserRewards(account, claimMetadata[account]);
+  });
 }
 
 main()
