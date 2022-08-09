@@ -2,6 +2,7 @@ import Promise from 'bluebird';
 import checksum from 'checksum';
 import { ethers } from 'hardhat';
 import fs from 'fs';
+import path from 'path';
 import { BalanceTree } from '../lib/merkle';
 import {
   Multicall,
@@ -46,6 +47,12 @@ const fsMkdirAsync = <(path: fs.PathLike, options: any) => void>(
 const fsWriteFileAsync = <(path: fs.PathLike, data: any) => void>(
   Promise.promisify(fs.writeFile)
 );
+const fsReadFileAsync = <(path: fs.PathLike) => string>(
+  (<unknown>Promise.promisify(fs.readFile))
+);
+const fsReadDirAsync = <(path: fs.PathLike) => string[]>(
+  (<unknown>Promise.promisify(fs.readdir))
+);
 
 const checksumAsync = <(file: string, options: any) => void>(
   Promise.promisify(checksum.file)
@@ -58,20 +65,22 @@ const provider = new ethers.providers.StaticJsonRpcProvider(
 const rlBtrflyAddress = '0xb4ce286398c3eebde71c63a6a925d7823821c1ee';
 const multicallAddress = '0x77dca2c955b15e9de4dbbcf1246b4b85b651e50e';
 const rewardDistributorAddress = '0xd756dfc1a5afd5e36cf88872540778841b318894';
-const minBlock = 7311342; // Block for the actual snapshot
-const maxBlock = 7311742; // Block for the relock threshold snapshot
-const deadline = 1659117600; // Epoch timestamp for the actual snapshot
+const minBlock = 7348145; // Block for the locked balance snapshot
+const maxBlock = 7348445; // Block for the relocked balance snapshot
+const deadline = 1659663030; // Epoch timestamp for the current snapshot
+const previousDeadline = 0; // Epoch timestamp for the previous snapshot
 
 // Used for storing cached distribution data
 const dataDir = `data`;
 const currentDir = `${dataDir}/${deadline}`;
+const previousDir = `${dataDir}/${previousDeadline}`;
 
-// List of tx hashes used for sending in rewards for the current snapshot
+// Replace with list of tx hashes used for sending in rewards for the current snapshot
 const txHashes = [
   '0xc2d3d650696e0f7379422060cfb6d82ccfc25a0d37606e708a12af6d6b853ce5',
   '0x2e75d0f47ed803112ce1dd35e403b938b2112ad6d07a8d219baae4921631d8e8',
 ];
-// Transfer event hash used to filter out all ERC20 Transfer events
+// Constant transfer event hash used to filter out all ERC20 Transfer events
 const erc20TransferHash =
   '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
@@ -93,6 +102,10 @@ type UserInfoList = {
 
 type TokenBalance = {
   [token: string]: BigNumber;
+};
+
+type UserReward = {
+  [account: string]: string;
 };
 
 type RewardDistribution = {
@@ -214,18 +227,14 @@ async function main() {
     totalBalance = totalBalance.add(userInfoList[lockers[idx]].eligibleBalance);
   });
 
-  // console.log(userInfoList['0x28e984b8ca48508f37f3d1fd466b7cce2da6befc']);
-  console.log(totalBalance);
+  console.log('Total Balance', totalBalance);
 
   const tokenBalances: TokenBalance = {};
 
   // Fetch all tx details and parse all token transfer data
   await Promise.each(txHashes, async (txHash) => {
-    console.log(txHash);
     const tx = await provider.getTransaction(txHash);
     const events = await tx.wait();
-    // console.log(tx);
-    console.log('Eth Transfer', tx.value);
 
     // Add native token transfers when available with the multisig address set as the identifier
     if (tx.value.gt(0)) {
@@ -257,15 +266,13 @@ async function main() {
     });
   });
 
-  console.log(tokenBalances);
+  console.log('Token Balances', tokenBalances);
 
-  // Populate the distribution data based on users' balance ratios
-  const distribution: RewardDistribution = {};
+  // Calculate the reward data based on users' balance ratios for the current snapshot
+  const tokenUserRewards: { [token: string]: UserReward } = {};
   Object.keys(tokenBalances).forEach((token) => {
-    console.log(token, tokenBalances[token]);
-
-    if (!(token in distribution)) {
-      distribution[token] = [];
+    if (!(token in tokenUserRewards)) {
+      tokenUserRewards[token] = {};
     }
 
     Object.keys(userInfoList).forEach((account) => {
@@ -274,14 +281,67 @@ async function main() {
         .mul(tokenBalances[token])
         .div(totalBalance);
 
+      if (amount.gt(0)) {
+        tokenUserRewards[token][account] = amount.toString();
+      }
+    });
+  });
+
+  // Fetch previous snapshot's reward distribution data
+  const skipDistribution: { [token: string]: boolean } = {};
+  if (previousDeadline) {
+    const tmpPreviousFiles = await fsReadDirAsync(previousDir);
+    const previousFiles = tmpPreviousFiles.filter(
+      (file) => path.extname(file) === '.json'
+    );
+
+    await Promise.each(previousFiles, async (file: any) => {
+      const fileData = await fsReadFileAsync(`${previousDir}/${file}`);
+      const obj = JSON.parse(fileData);
+      const token = path.parse(file).name;
+
+      obj.forEach((row: { account: string; amount: string }) => {
+        const { account: user, amount } = row;
+
+        if (token in tokenUserRewards) {
+          if (user in tokenUserRewards[token]) {
+            tokenUserRewards[token][user] = BigNumber.from(
+              tokenUserRewards[token][user]
+            )
+              .add(BigNumber.from(amount))
+              .toString();
+          } else {
+            tokenUserRewards[token][user] = amount;
+          }
+        } else {
+          // This token doesn't exist in the current snapshot distribution
+          // so we don't need to generate a new merkle root distribution for it
+          skipDistribution[token] = true;
+
+          tokenUserRewards[token] = {
+            [user]: amount,
+          };
+        }
+      });
+    });
+  }
+
+  // Populate the historical reward distribution data up to the current snapshot
+  const distribution: RewardDistribution = {};
+  Object.entries(tokenUserRewards).forEach(([token, rows]) => {
+    if (!(token in distribution)) {
+      distribution[token] = [];
+    }
+
+    Object.entries(rows).forEach(([account, amount]) => {
       distribution[token].push({
         account,
-        amount,
+        amount: BigNumber.from(amount),
       });
     });
   });
 
-  console.log(distribution);
+  // console.log(distribution);
 
   // Generate merkle roots+proofs for all tokens and cache distribution data
   const distributorCallParams: any = [];
@@ -289,7 +349,6 @@ async function main() {
   await Promise.each(Object.keys(distribution), async (token) => {
     const hashedDistributions = new BalanceTree(distribution[token]);
     const merkleRoot = hashedDistributions.getHexRoot();
-    console.log('Distribution:', token, merkleRoot);
 
     const cachedDistribution: { account: string; amount: string }[] = [];
     distribution[token].forEach(({ account, amount }) => {
@@ -318,17 +377,19 @@ async function main() {
     await fsMkdirAsync(currentDir, { recursive: true });
     await fsWriteFileAsync(fileName, JSON.stringify(cachedDistribution));
 
-    const checksumHash: any = await checksumAsync(fileName, {
-      algorithm: 'MD5',
-    });
+    if (!(token in skipDistribution)) {
+      const checksumHash: any = await checksumAsync(fileName, {
+        algorithm: 'MD5',
+      });
 
-    const callParams = {
-      token,
-      merkleRoot,
-      proof: utils.keccak256(utils.toUtf8Bytes(checksumHash)),
-    };
+      const callParams = {
+        token,
+        merkleRoot,
+        proof: utils.keccak256(utils.toUtf8Bytes(checksumHash)),
+      };
 
-    distributorCallParams.push(callParams);
+      distributorCallParams.push(callParams);
+    }
   });
 
   // Transform the calldata for multisig calls
@@ -338,9 +399,9 @@ async function main() {
 
     transformedCallParams.push([token, merkleRoot, proof]);
   });
-  console.log(transformedCallParams);
+  console.log('Calldata', transformedCallParams);
 
-  console.log(claimMetadata);
+  // console.log(claimMetadata);
 }
 
 main()
