@@ -54,6 +54,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.4.2",
     "@rari-capital/solmate": "^6.2.0",
+    "@redis/client": "^1.2.0",
     "dotenv": "^15.0.0",
     "solhint": "^3.3.7"
   }
