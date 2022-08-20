@@ -135,7 +135,11 @@ async function main() {
   const multisigAddress = (await rewardDistributor.MULTISIG()).toLowerCase();
 
   // Get unique list of lockers from the very beginning
-  const lockedEvents = await rlBtrfly.queryFilter(rlBtrfly.filters.Locked(), 0, minBlock);
+  const lockedEvents = await rlBtrfly.queryFilter(
+    rlBtrfly.filters.Locked(),
+    0,
+    minBlock
+  );
   const tmpLockers: Set<string> = new Set<string>();
   lockedEvents.map(({ args }) => tmpLockers.add(args[0].toLowerCase()));
   const lockers = Array.from(tmpLockers);
@@ -170,17 +174,16 @@ async function main() {
     tmpCalls.push(row);
 
     if ((i > 0 && i % 100 === 0) || i === lockedBalanceCalls.length - 1) {
-      const encodedData = await multicall.callStatic.aggregate(
-        tmpCalls,
-        { blockTag: minBlock }
-      );
+      const encodedData = await multicall.callStatic.aggregate(tmpCalls, {
+        blockTag: minBlock,
+      });
 
       encodedData.returnData.forEach((returnData) => {
         const decoded = rlBtrfly.interface.decodeFunctionResult(
           'balanceOf',
           returnData
         );
-    
+
         const balance = decoded[0];
 
         userInfoList[lockers[idx]] = {
@@ -204,23 +207,22 @@ async function main() {
     tmpCalls.push(row);
 
     if ((i > 0 && i % 100 === 0) || i === lockCalls.length - 1) {
-      const encodedData = await multicall.callStatic.aggregate(
-        tmpCalls,
-        { blockTag: minBlock }
-      );
+      const encodedData = await multicall.callStatic.aggregate(tmpCalls, {
+        blockTag: minBlock,
+      });
 
       encodedData.returnData.forEach((returnData) => {
         const decoded = rlBtrfly.interface.decodeFunctionResult(
           'lockedBalances',
           returnData
         );
-    
+
         const locks: Lock[] = [];
         decoded[3].forEach((lock: any) => {
           const [amount, unlockTime] = lock;
           locks.push({ amount, unlockTime });
         });
-    
+
         userInfoList[lockers[idx]].locks = locks;
 
         idx += 1;
@@ -237,10 +239,9 @@ async function main() {
     tmpCalls.push(row);
 
     if ((i > 0 && i % 100 === 0) || i === balanceCalls.length - 1) {
-      const encodedData = await multicall.callStatic.aggregate(
-        tmpCalls,
-        { blockTag: maxBlock }
-      );
+      const encodedData = await multicall.callStatic.aggregate(tmpCalls, {
+        blockTag: maxBlock,
+      });
 
       encodedData.returnData.forEach((returnData) => {
         const decoded = rlBtrfly.interface.decodeFunctionResult(
@@ -249,21 +250,23 @@ async function main() {
         );
         const balance = decoded[0];
         let unlockedBalance = BigNumber.from(0);
-    
+
         userInfoList[lockers[idx]].locks.forEach((lock) => {
           if (lock.unlockTime === deadline) {
             unlockedBalance = lock.amount;
           }
         });
-    
+
         userInfoList[lockers[idx]].relockedBalance = unlockedBalance.lt(balance)
           ? unlockedBalance
           : balance;
         userInfoList[lockers[idx]].eligibleBalance = userInfoList[
           lockers[idx]
         ].lockedBalance.add(userInfoList[lockers[idx]].relockedBalance);
-    
-        totalBalance = totalBalance.add(userInfoList[lockers[idx]].eligibleBalance);
+
+        totalBalance = totalBalance.add(
+          userInfoList[lockers[idx]].eligibleBalance
+        );
 
         idx += 1;
       });
