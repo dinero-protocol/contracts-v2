@@ -93,6 +93,14 @@ const config: HardhatUserConfig = {
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
+    mainnet: {
+      url: process.env.MAINNET_URL,
+      gasPrice: 80000000000,
+
+      accounts: {
+        mnemonic: process.env.SEED,
+      },
+    },
     hardhat: {
       chainId: 31337,
       forking: {
