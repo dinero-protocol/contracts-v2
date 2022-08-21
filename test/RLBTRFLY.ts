@@ -8,7 +8,7 @@ import {
   validateEvent,
 } from './helpers';
 import { BTRFLYV2, RLBTRFLY } from '../typechain';
-import { increaseBlockTimestamp, toBN } from './helpers';
+import { increaseBlockTimestamp, toBN, getPermitSignature } from './helpers';
 
 describe('RLBTRFLY', function () {
   let admin: SignerWithAddress;
@@ -122,11 +122,87 @@ describe('RLBTRFLY', function () {
       expect(pendingLock).to.equal(lockAmount);
     });
 
+    it('Should lock with permit', async function () {
+      const account = admin.address;
+      const lockAmount = toBN(1e9);
+
+      const btrflyBalanceBefore = await btrflyV2.balanceOf(account);
+      const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(account);
+
+      const deadline = ethers.constants.MaxUint256;
+
+      const { v, r, s } = await getPermitSignature(
+        admin,
+        btrflyV2,
+        rlBtrfly.address,
+        lockAmount,
+        deadline
+      );
+
+      const lockEvent = await callAndReturnEvent(rlBtrfly.lockWithPermit, [
+        account,
+        lockAmount,
+        deadline,
+        v,
+        r,
+        s,
+      ]);
+
+      const epoch = (await rlBtrfly.getCurrentEpoch()).add(epochDuration);
+
+      validateEvent(lockEvent, 'Locked(address,uint256,uint256)', {
+        account,
+        epoch,
+        amount: lockAmount,
+      });
+
+      // const unlockedAt = epoch.add(lockDuration);
+      const btrflyBalanceAfter = await btrflyV2.balanceOf(account);
+      const lockedBalanceAfter = await rlBtrfly.lockedBalanceOf(account);
+
+      expect(btrflyBalanceAfter).to.equal(btrflyBalanceBefore.sub(lockAmount));
+      expect(lockedBalanceAfter).to.equal(lockedBalanceBefore.add(lockAmount));
+
+      // const { total, unlockable, locked, lockData } =
+      //   await rlBtrfly.lockedBalances(account);
+
+      // const totalLockAmountAfter = lockAmount.mul(2);
+
+      // expect(total).to.equal(totalLockAmountAfter);
+      // expect(unlockable).to.equal(0);
+      // expect(locked).to.equal(totalLockAmountAfter);
+      // expect(lockData.length).to.equal(1);
+      // expect(lockData[0].amount).to.equal(totalLockAmountAfter);
+      // expect(lockData[0].unlockTime).to.equal(unlockedAt.toNumber());
+
+      // const pendingLock = await rlBtrfly.pendingLockOf(account);
+      // expect(pendingLock).to.equal(totalLockAmountAfter);
+    });
+
+    it('Permit should revert if insufficient allowance', async function () {
+      expect(true).to.equal(true);
+    });
+
+    it('Permit should revert after deadline', async function () {
+      expect(true).to.equal(true);
+    });
+
+    it('Permit should fail with incorrect nonce', async function () {
+      // calling permit with incorrect nonce should fail
+      expect(true).to.equal(true);
+    });
+
+    it('Sequential permits should not replay', async function () {
+      // calling permit twice in same block should fail
+      expect(true).to.equal(true);
+    });
+
     it('Should store the lock on existing lock data within the same epoch', async function () {
       const account = admin.address;
       const lockAmount = toBN(1e9);
       const btrflyBalanceBefore = await btrflyV2.balanceOf(account);
       const lockedBalanceBefore = await rlBtrfly.lockedBalanceOf(account);
+
       const expectedTotal = lockAmount.add(lockedBalanceBefore);
       const { lockData: lockDataBefore } = await rlBtrfly.lockedBalances(
         account

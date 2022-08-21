@@ -225,6 +225,32 @@ contract RLBTRFLY is ReentrancyGuard, Ownable {
     }
 
     /**
+        @notice Lock tokens using an ERC-2612 permit for allowance
+        @param  account  address  Account
+        @param  amount   uint256  Amount
+        @param  deadline uint256  Deadline timestamp
+        @param  v        uint8    Recovery ID
+        @param  r        uint32   ECDSA signature data
+        @param  s        uint32   ECDSA signature data
+     */
+    function lockWithPermit(
+        address account,
+        uint256 amount,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external nonReentrant {
+        if (account == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroAmount();
+
+        btrflyV2.permit(msg.sender, address(this), amount, deadline, v, r, s);
+        btrflyV2.safeTransferFrom(msg.sender, address(this), amount);
+
+        _lock(account, amount);
+    }
+
+    /**
         @notice Perform the actual lock
         @param  account  address  Account
         @param  amount   uint256  Amount
