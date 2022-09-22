@@ -31,7 +31,7 @@ describe('Relocker', () => {
   let btrflyClaimData: ClaimData[];
   let btrflyAmount: BigNumber;
 
-  beforeEach(async function () {
+  before(async function () {
     ({ admin } = this);
 
     user = await impersonateAddressAndReturnSigner(
