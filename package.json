@@ -52,6 +52,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.4.2",
     "@rari-capital/solmate": "^6.2.0",
+    "@types/node-fetch": "^2.6.2",
     "dotenv": "^15.0.0",
     "solhint": "^3.3.7"
   }

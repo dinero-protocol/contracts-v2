@@ -1,7 +1,9 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   callAndReturnEvent,
-  claimData,
+  ClaimData,
+  ClaimMetaData,
+  getClaimData,
   impersonateAddressAndReturnSigner,
   validateEvent,
 } from './helpers';
@@ -16,13 +18,6 @@ import {
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 
-type Claims = {
-  token: string;
-  account: string;
-  amount: string;
-  merkleProof: string[];
-}[];
-
 describe('Relocker', () => {
   let admin: SignerWithAddress;
   let user: SignerWithAddress;
@@ -30,7 +25,8 @@ describe('Relocker', () => {
   let btrfly: BTRFLYV2;
   let rewardDistributor: RewardDistributor;
   let relocker: Relocker;
-  let claims: Claims;
+  let claimData: ClaimData[];
+  let claims: ClaimMetaData[];
 
   beforeEach(async function () {
     ({ admin } = this);
@@ -65,6 +61,7 @@ describe('Relocker', () => {
       rewardDistributor.address
     );
 
+    claimData = await getClaimData(user.address);
     claims = claimData.map((data) => data.claimMetadata);
   });
 
