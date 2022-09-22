@@ -106,7 +106,7 @@ export type ClaimData = {
 
 export const getClaimData = async (user: string): Promise<ClaimData[]> => {
   // Setup proxy agent to circumvent geoblocking
-  const proxyAgent = new HttpsProxyAgent('http://20.43.56.37:8000');
+  const proxyAgent = new HttpsProxyAgent('http://168.63.76.32:3128');
   const response = await fetch(
     `https://app.redacted.finance/api/rewards/1/${user}`,
     { agent: proxyAgent }
