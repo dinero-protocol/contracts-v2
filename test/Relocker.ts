@@ -5,6 +5,7 @@ import {
   ClaimMetaData,
   getClaimData,
   impersonateAddressAndReturnSigner,
+  toBN,
   validateEvent,
 } from './helpers';
 import { ethers } from 'hardhat';
@@ -27,6 +28,8 @@ describe('Relocker', () => {
   let relocker: Relocker;
   let claimData: ClaimData[];
   let claims: ClaimMetaData[];
+  let btrflyClaimData: ClaimData[];
+  let btrflyAmount: BigNumber;
 
   beforeEach(async function () {
     ({ admin } = this);
@@ -63,6 +66,17 @@ describe('Relocker', () => {
 
     claimData = await getClaimData(user.address);
     claims = claimData.map((data) => data.claimMetadata);
+
+    // isolate btrfly claim data
+    btrflyClaimData = claimData.filter(
+      (data) => data.token.toLowerCase() === btrfly.address.toLowerCase()
+    );
+
+    // get total number of btrfly claimable by user
+    btrflyAmount = btrflyClaimData.reduce(
+      (prev, cur) => prev.add(BigNumber.from(cur.claimable)),
+      BigNumber.from(0)
+    );
   });
 
   describe('constructor', () => {
@@ -86,18 +100,64 @@ describe('Relocker', () => {
       );
     });
 
-    it('should claim and lock btrfly', async () => {
-      // isolate btrfly claim data
-      const btrflyClaims = claimData.filter(
-        (data) => data.token.toLowerCase() === btrfly.address.toLowerCase()
+    it('should revert if amount is greater than claimable amount', async () => {
+      const greaterThanAmount = btrflyAmount.add(toBN(1));
+
+      await expect(
+        relocker.claimAndLock(claims, greaterThanAmount)
+      ).to.revertedWith(
+        'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
+      );
+    });
+
+    it('should claim and lock if amount is less than claimable', async () => {
+      const secondUser = await impersonateAddressAndReturnSigner(
+        admin,
+        '0xb5e84d6d97021124F29c4947cd05E57cd24C8249'
       );
 
-      // get total number of btrfly claimable by user
-      const btrflyAmount = btrflyClaims.reduce(
+      const secondUserClaimData = await getClaimData(secondUser.address);
+      const secondUserBtrflyClaimData = secondUserClaimData.filter(
+        (data) => data.token.toLowerCase() === btrfly.address.toLowerCase()
+      );
+      const btrflyAmount = secondUserBtrflyClaimData.reduce(
         (prev, cur) => prev.add(BigNumber.from(cur.claimable)),
         BigNumber.from(0)
       );
+      const secondUsersClaims = secondUserBtrflyClaimData.map(
+        (data) => data.claimMetadata
+      );
 
+      const lessBtrflyAmount = btrflyAmount.sub(toBN(1));
+
+      const secondUserRLBalanceBefore = await rlBtrfly.lockedBalanceOf(
+        secondUser.address
+      );
+      const expectedSecondUserRLBalanceAfter =
+        secondUserRLBalanceBefore.add(lessBtrflyAmount);
+
+      await btrfly
+        .connect(secondUser)
+        .approve(relocker.address, lessBtrflyAmount);
+
+      await relocker
+        .connect(secondUser)
+        .claimAndLock(secondUsersClaims, lessBtrflyAmount);
+
+      const secondUserRLBalanceAfter = await rlBtrfly.lockedBalanceOf(
+        secondUser.address
+      );
+      const secondUserRLBalanceIncrease = secondUserRLBalanceAfter.sub(
+        secondUserRLBalanceBefore
+      );
+
+      expect(secondUserRLBalanceAfter).to.equal(
+        expectedSecondUserRLBalanceAfter
+      );
+      expect(secondUserRLBalanceIncrease).to.equal(lessBtrflyAmount);
+    });
+
+    it('should claim and lock btrfly', async () => {
       const userRLBalanceBefore = await rlBtrfly.lockedBalanceOf(user.address);
 
       const expectedUserRLBalanceAfter = userRLBalanceBefore.add(btrflyAmount);
