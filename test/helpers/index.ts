@@ -3,6 +3,7 @@ import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import fetch from 'node-fetch';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 
 export const callAndReturnEvent = async (
   fn: any,
@@ -104,8 +105,11 @@ export type ClaimData = {
 };
 
 export const getClaimData = async (user: string): Promise<ClaimData[]> => {
+  // Setup proxy agent to circumvent geoblocking
+  const proxyAgent = new HttpsProxyAgent('http://20.43.56.37:8000');
   const response = await fetch(
-    `https://app.redacted.finance/api/rewards/1/${user}`
+    `https://app.redacted.finance/api/rewards/1/${user}`,
+    { agent: proxyAgent }
   );
   const json = await response.json();
   return json.data as ClaimData[];
