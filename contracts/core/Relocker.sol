@@ -64,7 +64,7 @@ contract Relocker {
         emit Relock(msg.sender, amount);
     }
 
-       /**
+    /**
         @notice Claim rewards based on the specified metadata and lock amount as rlBtrfly using permit
         @notice Use msg.sender not account parameter since relock is explicit action
         @param  claims    Claim[]  List of claim metadata 
@@ -81,14 +81,12 @@ contract Relocker {
         uint8 v,
         bytes32 r,
         bytes32 s
-    )
-        external
-    {
+    ) external {
         if (amount == 0) revert ZeroAmount();
 
         rewardDistributor.claim(claims);
-        
-        // Use Permit to transfer tokens to contract.  
+
+        // Use Permit to transfer tokens to contract.
         btrfly.permit(msg.sender, address(this), amount, deadline, v, r, s);
         btrfly.safeTransferFrom(msg.sender, address(this), amount);
         rlBtrfly.lock(msg.sender, amount);
@@ -102,24 +100,26 @@ contract Relocker {
         @param  claims    Claim[]  List of claim metadata 
 
     */
-    function processExpiredLocksAndRelockRewards(Common.Claim[] calldata claims) external {
-       // Get user balance before unlock.
-       uint256 balanceBefore = btrfly.balanceOf(msg.sender);
+    function processExpiredLocksAndRelockRewards(Common.Claim[] calldata claims)
+        external
+    {
+        // Get user balance before unlock.
+        uint256 balanceBefore = btrfly.balanceOf(msg.sender);
 
-       // Unlock expired locks.
-       rlBtrfly.processExpiredLocks(false);
+        // Unlock expired locks.
+        rlBtrfly.processExpiredLocks(false);
 
-       // Claim rewards.
-       rewardDistributor.claim(claims);
-       
-       // Amount is difference in balance after expired locks and claim.
-       uint256 amount = btrfly.balanceOf(msg.sender) - balanceBefore;
+        // Claim rewards.
+        rewardDistributor.claim(claims);
 
-       // Transfer amount to contract.
-       btrfly.safeTransferFrom(msg.sender, address(this), amount);
+        // Amount is difference in balance after expired locks and claim.
+        uint256 amount = btrfly.balanceOf(msg.sender) - balanceBefore;
 
-       // Lock amount as rlBtrfly.
-       rlBtrfly.lock(msg.sender, amount);
+        // Transfer amount to contract.
+        btrfly.safeTransferFrom(msg.sender, address(this), amount);
+
+        // Lock amount as rlBtrfly.
+        rlBtrfly.lock(msg.sender, amount);
 
         emit Relock(msg.sender, amount);
     }
@@ -141,28 +141,27 @@ contract Relocker {
         bytes32 r,
         bytes32 s
     ) external {
+        // Get user balance before unlock.
+        uint256 balanceBefore = btrfly.balanceOf(msg.sender);
 
-       // Get user balance before unlock.
-       uint256 balanceBefore = btrfly.balanceOf(msg.sender);
+        // Unlock expired locks.
+        rlBtrfly.processExpiredLocks(false);
 
-       // Unlock expired locks.
-       rlBtrfly.processExpiredLocks(false);
+        // Claim rewards.
+        rewardDistributor.claim(claims);
 
-       // Claim rewards.
-       rewardDistributor.claim(claims);
-       
-       // Amount is difference in balance after expired locks and claim.
-       uint256 amount = btrfly.balanceOf(msg.sender) - balanceBefore;
+        // Amount is difference in balance after expired locks and claim.
+        uint256 amount = btrfly.balanceOf(msg.sender) - balanceBefore;
 
-       // Use Permit to transfer tokens to contract.  
-       btrfly.permit(msg.sender, address(this), amount, deadline, v, r, s);
+        // Use Permit to transfer tokens to contract.
+        btrfly.permit(msg.sender, address(this), amount, deadline, v, r, s);
 
-       // Transfer amount to contract.
-       btrfly.safeTransferFrom(msg.sender, address(this), amount);
+        // Transfer amount to contract.
+        btrfly.safeTransferFrom(msg.sender, address(this), amount);
 
-       // Lock amount as rlBtrfly.
-       rlBtrfly.lock(msg.sender, amount);
+        // Lock amount as rlBtrfly.
+        rlBtrfly.lock(msg.sender, amount);
 
-       emit Relock(msg.sender, amount);
+        emit Relock(msg.sender, amount);
     }
 }

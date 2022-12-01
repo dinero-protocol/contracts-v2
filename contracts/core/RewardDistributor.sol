@@ -162,11 +162,6 @@ contract RewardDistributor is Ownable, ReentrancyGuard {
             require(sent, "Failed to transfer to account");
         }
 
-        emit RewardClaimed(
-            token,
-            account,
-            claimable,
-            reward.updateCount
-        );
+        emit RewardClaimed(token, account, claimable, reward.updateCount);
     }
 }
