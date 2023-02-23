@@ -37,6 +37,12 @@ jobs:
           name: setup-solc-select
           command: pip install solc-select && solc-select install 0.8.12 && solc-select use 0.8.12
       - run:
+          name: install-foundry
+          command: |
+            curl -L https://foundry.paradigm.xyz | bash || true
+            export PATH="$PATH:/home/circleci/.foundry/bin"
+            foundryup
+      - run:
           name: setup-slither
           command: git clone https://github.com/redacted-cartel/slither.git && cd slither && python setup.py install
       - attach_workspace:
