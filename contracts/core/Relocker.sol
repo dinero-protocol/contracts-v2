@@ -63,8 +63,8 @@ contract Relocker {
         @notice Claim rewards based on the specified metadata and lock amount as rlBtrfly
         @notice Use msg.sender not account parameter since relock is explicit action
         @param  claims          Claim[]  List of claim metadata 
-        @param _permitParams    permit parameters for btrfly (optional)
         @param  amount          uint256  Amount to relock, cheaper to calculate offchain
+        @param _permitParams    permit parameters for btrfly (optional)
      */
     function claimAndLock(
         Common.Claim[] calldata claims,
@@ -72,7 +72,7 @@ contract Relocker {
         bytes calldata _permitParams
     ) external {
         if (amount == 0) revert ZeroAmount();
-        
+
         // Claim rewards
         rewardDistributor.claim(claims);
 
