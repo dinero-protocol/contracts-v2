@@ -162,18 +162,39 @@ describe('Relocker', function () {
     });
 
     it('should revert on invalid permit signature', async () => {
-      //invalid deadline
+      //wrong address (AddressZero)
       const { v, r, s } = await getPermitSignature(
         mockUser,
         btrfly,
-        relocker.address,
+        ethers.constants.AddressZero,
         BigNumber.from(btrflyAmount),
         ethers.constants.Zero
       );
 
       const permitParams = ethers.utils.defaultAbiCoder.encode(
         ["address", "address", "uint256", "uint256", "uint8", "bytes32", "bytes32"],
-        [mockUser.address, relocker.address, btrflyAmount, ethers.constants.Zero, v, r, s]
+        [mockUser.address, ethers.constants.AddressZero, btrflyAmount, ethers.constants.Zero, v, r, s]
+      );
+
+      await expect(relocker.claimAndLock(mockUserBtrflyClaim, btrflyAmount, permitParams)).to.be.revertedWith("PermitFailed()");
+    });
+
+    it('should revert on expired permit deadline', async () => {
+      //get current block timestamp
+      const currentTimestamp = BigNumber.from((await ethers.provider.getBlock('latest')).timestamp).add(-1);
+
+      //expired deadline
+      const { v, r, s } = await getPermitSignature(
+        mockUser,
+        btrfly,
+        relocker.address,
+        BigNumber.from(btrflyAmount),
+        currentTimestamp
+      );
+
+      const permitParams = ethers.utils.defaultAbiCoder.encode(
+        ["address", "address", "uint256", "uint256", "uint8", "bytes32", "bytes32"],
+        [mockUser.address, relocker.address, btrflyAmount, currentTimestamp, v, r, s]
       );
 
       await expect(relocker.claimAndLock(mockUserBtrflyClaim, btrflyAmount, permitParams)).to.be.revertedWith("PermitFailed()");
