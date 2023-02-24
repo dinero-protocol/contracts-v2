@@ -6,16 +6,22 @@ import { RewardDistributor, BTRFLYV2 } from '../typechain';
 import { callAndReturnEvents, toBN, validateEvent } from './helpers';
 import { BalanceTree } from '../lib/merkle';
 
+type Distribution = {
+  token: string;
+  merkleRoot: string;
+  proof: string;
+};
+
 describe('RewardDistributor', function () {
   let admin: SignerWithAddress;
   let notAdmin: SignerWithAddress;
   let btrflyV2: BTRFLYV2;
   let rewardDistributor: RewardDistributor;
 
-  let btrflyTree: any;
-  let ethTree: any;
-  let btrflyDistribution: any;
-  let ethDistribution: any;
+  let btrflyTree: BalanceTree;
+  let ethTree: BalanceTree;
+  let btrflyDistribution: Distribution;
+  let ethDistribution: Distribution;
   let user1: string;
   let user2: string;
 

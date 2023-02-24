@@ -3,9 +3,10 @@ import { BigNumber, utils } from 'ethers';
 
 export default class BalanceTree {
   private readonly tree: MerkleTree;
-  constructor(balances: { account: string; amount: BigNumber }[]) {
+  constructor(balances: { account: string; amount: BigNumber | string }[]) {
     this.tree = new MerkleTree(
       balances.map(({ account, amount }) => {
+        typeof amount === 'string' && (amount = BigNumber.from(amount));
         return BalanceTree.toNode(account, amount);
       })
     );

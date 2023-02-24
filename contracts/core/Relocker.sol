@@ -18,6 +18,18 @@ interface IRewardDistributor {
     function claim(Common.Claim[] calldata claims) external;
 }
 
+interface IPermit {
+    function permit(
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
+}
+
 contract Relocker {
     using SafeTransferLib for ERC20;
 
@@ -29,6 +41,7 @@ contract Relocker {
 
     error ZeroAddress();
     error ZeroAmount();
+    error PermitFailed();
 
     constructor(
         address _btrfly,
@@ -49,18 +62,44 @@ contract Relocker {
     /**
         @notice Claim rewards based on the specified metadata and lock amount as rlBtrfly
         @notice Use msg.sender not account parameter since relock is explicit action
-        @param  claims  Claim[]  List of claim metadata 
-        @param  amount  uint256  Amount to relock, cheaper to calculate offchain
+        @param  claims          Claim[]  List of claim metadata 
+        @param  amount          uint256  Amount to relock, cheaper to calculate offchain
+        @param _permitParams    permit parameters for btrfly (optional)
      */
-    function claimAndLock(Common.Claim[] calldata claims, uint256 amount)
-        external
-    {
+    function claimAndLock(
+        Common.Claim[] calldata claims,
+        uint256 amount,
+        bytes calldata _permitParams
+    ) external {
         if (amount == 0) revert ZeroAmount();
 
+        // Claim rewards
         rewardDistributor.claim(claims);
+
+        // Use Permit to transfer tokens to contract
+        _permit(_permitParams);
+
+        // Transfer amount to contract
         btrfly.safeTransferFrom(msg.sender, address(this), amount);
+
+        // Lock amount as rlBtrfly
         rlBtrfly.lock(msg.sender, amount);
 
         emit Relock(msg.sender, amount);
+    }
+
+    /**
+     * @dev execute the permit according to the permit param
+     * @param _permitParams data
+     */
+    function _permit(bytes calldata _permitParams) internal {
+        if (_permitParams.length == 32 * 7) {
+            (bool success, ) = address(btrfly).call(
+                abi.encodePacked(IPermit.permit.selector, _permitParams)
+            );
+            if (!success) {
+                revert PermitFailed();
+            }
+        }
     }
 }

@@ -44,6 +44,8 @@ jobs:
       - run:
           name: slither-analysis
           command: |
+              set +e
+              rm -rf foundry.toml
               python -m slither . --filter-paths "node_modules|contracts/old|contracts/mock|contracts/interface" --solc-disable-warnings --json slither-analysis.json
               python -m slither . --filter-paths "node_modules|contracts/old|contracts/mock|contracts/interface" --solc-disable-warnings --print human-summary,contract-summary
               exit 0
