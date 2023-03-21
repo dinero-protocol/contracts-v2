@@ -113,6 +113,6 @@ artifacts/
 .DS_Store
 typechain
 typechain-types
-data
+data/snapshot
 .vscode/settings.json
 out/
