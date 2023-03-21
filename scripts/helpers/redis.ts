@@ -18,7 +18,7 @@ const pwd = IS_DEVELOPMENT ? REDIS_PWD_DEV : REDIS_PWD;
 
 let _client: RedisClientType;
 
-const redisClient = async (): Promise<RedisClientType> => {
+export const redisClient = async (): Promise<RedisClientType> => {
   if (!_client) {
     _client = createClient({
       url: `redis://:${pwd}@${host}:${port}`,
@@ -41,6 +41,19 @@ export const setUserRewards = async (
   try {
     const client = await redisClient();
     await client.hSet('rewards', account, JSON.stringify(payload));
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+export const setTmpUserRewards = async (
+  account: string,
+  payload: unknown
+): Promise<void> => {
+  try {
+    const client = await redisClient();
+    await client.hSet('rewards-tmp', account, JSON.stringify(payload));
   } catch (error) {
     console.log(error);
     throw error;
