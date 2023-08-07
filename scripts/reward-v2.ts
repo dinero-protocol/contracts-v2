@@ -1,5 +1,6 @@
 import Promise from 'bluebird';
 import checksum from 'checksum';
+import { exec } from 'child_process';
 import { ethers } from 'hardhat';
 import fs from 'fs';
 import path from 'path';
@@ -13,6 +14,11 @@ import {
   // RewardDistributor,
 } from '../typechain';
 import { setTmpUserRewards } from './helpers/redis';
+import {
+  getDeadlineMetadata,
+  getCurrentEpoch,
+  epochDuration,
+} from './reward-helper';
 
 // Used for parsing Transfer event log via `parseLog`
 // const erc20Abi = [
@@ -71,21 +77,6 @@ const multicallAddress = '0xeefba1e63905ef1d7acba5a8513c70307c1ce441';
 const btrflyV2Address = '0xc55126051b22ebb829d00368f4b12bde432de5da';
 const wethAddress = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
 
-// Updated for epoch #19
-const curBlock = 17084048; // Block for the locked balance snapshot
-const maxBlock = 17133820; // Block for the relocked balance snapshot (1 week after deadline)
-const deadline = 1681948800; // Epoch timestamp for the current snapshot
-const previousDeadline = deadline - 1209600; // Epoch timestamp for the previous snapshot
-const previousBlock = 16985956; // 2 weeks before curBlock and before midnight
-
-// Used for storing cached distribution data
-const distDir = `data/dist`;
-const snapshotDir = `data/snapshot`;
-const currentDistDir = `${distDir}/${deadline}`;
-const previousDistDir = `${distDir}/${previousDeadline}`;
-const latestDistDir = `${distDir}/latest`;
-const currentSnapshotDir = `${snapshotDir}`;
-
 const tokenSymbols = {
   [wethAddress.toLowerCase()]: 'weth',
   [btrflyV2Address.toLowerCase()]: 'btrfly',
@@ -119,9 +110,28 @@ type RewardDistribution = {
 };
 
 async function main() {
-  let totalBalance = BigNumber.from(0);
+  // Fetch deadline metadata
+  const epoch = await getCurrentEpoch(provider);
+  const {
+    curBlock,
+    maxBlock,
+    curDeadline: deadline,
+    prevBlock,
+  } = await getDeadlineMetadata(provider, epoch);
+  const previousDeadline = deadline - epochDuration; // Epoch timestamp for the previous snapshot
+  console.log('Distribution for epoch', epoch);
+  console.log(curBlock, maxBlock, deadline, prevBlock);
+  console.log('Deadline', deadline);
 
-  const { timestamp } = await provider.getBlock('latest');
+  // Used for storing cached distribution data
+  const distDir = `data/dist`;
+  const snapshotDir = `data/snapshot`;
+  const currentDistDir = `${distDir}/${deadline}`;
+  const previousDistDir = `${distDir}/${previousDeadline}`;
+  const latestDistDir = `${distDir}/latest`;
+  const currentSnapshotDir = `${snapshotDir}`;
+
+  let totalBalance = BigNumber.from(0);
 
   const rlBtrfly = (await ethers.getContractAt(
     'RLBTRFLY',
@@ -141,7 +151,7 @@ async function main() {
   // Get unique list of lockers from the previous deadline
   const lockedEvents = await rlBtrfly.queryFilter(
     rlBtrfly.filters.Locked(),
-    previousBlock,
+    prevBlock,
     maxBlock - 1
   );
   // console.log(lockedEvents.length);
@@ -182,6 +192,8 @@ async function main() {
     });
   });
 
+  await Promise.delay(2000);
+
   // Perform standard balance snapshot at the designated minimum snapshot block (1 week before deadline)
   const userInfoList: UserInfoList = {};
   const cachedSnapshot: any = {};
@@ -193,7 +205,7 @@ async function main() {
 
     if ((i > 0 && i % 50 === 0) || i === lockedBalanceCalls.length - 1) {
       console.log('=====1', i, tmpCalls.length);
-      await Promise.delay(500);
+      await Promise.delay(300);
 
       const encodedData = await multicall.callStatic.aggregate(tmpCalls, {
         blockTag: curBlock,
@@ -223,9 +235,9 @@ async function main() {
   await Promise.each(lockCalls, async (row, i) => {
     tmpCalls.push(row);
 
-    if ((i > 0 && i % 100 === 0) || i === lockCalls.length - 1) {
+    if ((i > 0 && i % 50 === 0) || i === lockCalls.length - 1) {
       console.log('==========2', i, tmpCalls.length);
-      await Promise.delay(500);
+      await Promise.delay(300);
 
       const encodedData = await multicall.callStatic.aggregate(tmpCalls, {
         blockTag: maxBlock,
@@ -301,10 +313,11 @@ async function main() {
   // });
 
   // Hardcode amounts for faster distribution
-  tokenBalances[wethAddress] = BigNumber.from(2920).mul(
-    BigNumber.from(`${1e16}`)
+  // 2023-07-25
+  tokenBalances[wethAddress] = BigNumber.from(16566).mul(
+    BigNumber.from(`${1e15}`)
   );
-  tokenBalances[btrflyV2Address] = BigNumber.from(1860).mul(
+  tokenBalances[btrflyV2Address] = BigNumber.from(1750).mul(
     BigNumber.from(`${1e18}`)
   );
 
@@ -474,6 +487,10 @@ async function main() {
       tmpMetadata.length = 0;
     }
   });
+
+  //exec(`./scripts/dist.sh ${deadline}`, (err, stdout, stderr) => {
+  //  console.log(err, stdout, stderr);
+  //});
 }
 
 main()
